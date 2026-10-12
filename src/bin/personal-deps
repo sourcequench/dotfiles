@@ -14,6 +14,8 @@ check i3status
 check wpctl
 check brightnessctl
 check inputplug
+check nm-applet
+check blueman-applet
 check i3
 check xss-lock
 check i3lock
