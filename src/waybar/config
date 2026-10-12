@@ -1,0 +1,61 @@
+{
+    "layer": "top",
+    "position": "bottom",
+    "modules-left": ["sway/workspaces"],
+    "modules-center": ["clock"],
+    "modules-right": ["network", "bluetooth", "cpu", "memory", "disk", "battery", "tray"],
+
+    "sway/workspaces": {
+        "disable-scroll": true
+    },
+
+    "clock": {
+        "format": "{:%Y-%m-%d %H:%M:%S}",
+        "interval": 1
+    },
+
+    "network": {
+        "format-wifi": "Wi-Fi: {essid} {signalStrength}%",
+        "format-ethernet": "ETH: {ipaddr}",
+        "format-linked": "ETH (no IP)",
+        "format-disconnected": "Disconnected",
+        "on-click": "nm-connection-editor"
+    },
+
+    "bluetooth": {
+        "format": "BT",
+        "format-connected": "BT: {device_alias}",
+        "format-off": "",
+        "on-click": "blueman-manager"
+    },
+
+    "cpu": {
+        "format": "CPU {usage}%",
+        "interval": 5
+    },
+
+    "memory": {
+        "format": "MEM {used:0.1f}G",
+        "interval": 5
+    },
+
+    "disk": {
+        "format": "/ {free}",
+        "path": "/"
+    },
+
+    "battery": {
+        "format": "Bat: {status} {capacity}% {time}",
+        "format-charging": "Bat: charging {capacity}%",
+        "format-full": "Bat: full",
+        "format-not-charging": "Bat: {capacity}%",
+        "states": {
+            "warning": 30,
+            "critical": 15
+        }
+    },
+
+    "tray": {
+        "spacing": 10
+    }
+}
