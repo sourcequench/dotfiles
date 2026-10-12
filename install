@@ -83,7 +83,7 @@ fi
 "$source_dir/bin/personal-deps" "$wm" || { echo 'Missing required commands; configuration unchanged.' >&2; exit 1; }
 [ "$dry_run" -eq 0 ] || { echo 'Dry run complete.'; exit 0; }
 cfg="$HOME/.config/personal-dotfiles"; backup="$HOME/.local/state/personal-dotfiles/backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$cfg" "$HOME/.local/bin" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway"
+mkdir -p "$cfg" "$HOME/.local/bin" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway" "$HOME/.config/systemd/user"
 for file in "$cfg/shared.conf" "$cfg/i3.conf" "$cfg/sway.conf" "$cfg/local-wm.conf" "$HOME/.tmux.conf" "$HOME/.Xmodmap" "$HOME/.config/kitty/kitty.conf" "$HOME/.config/i3/config" "$HOME/.config/sway/config"; do
     if [ -e "$file" ]; then rel=${file#"$HOME/"}; mkdir -p "$backup/$(dirname "$rel")"; cp -a "$file" "$backup/$rel"; fi
 done
@@ -97,6 +97,9 @@ install -m 0755 "$source_dir/bin/personal-launcher" "$HOME/.local/bin/personal-l
 install -m 0755 "$source_dir/bin/personal-lock" "$HOME/.local/bin/personal-lock"
 install -m 0755 "$source_dir/bin/personal-screenshot" "$HOME/.local/bin/personal-screenshot"
 install -m 0755 "$source_dir/bin/personal-status" "$HOME/.local/bin/personal-status"
+install -m 0755 "$source_dir/bin/personal-dotfiles-update" "$HOME/.local/bin/personal-dotfiles-update"
+install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
+install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"
 [ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"
 printf 'source-file ~/.config/personal-dotfiles/tmux.conf\n' > "$HOME/.tmux.conf"
 if [ "$wm" = i3 ] || [ "$wm" = both ]; then install -m 0644 "$source_dir/wm/i3.conf" "$cfg/i3.conf"; printf 'include ~/.config/personal-dotfiles/i3.conf\n' > "$HOME/.config/i3/config"; fi

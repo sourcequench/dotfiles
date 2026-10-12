@@ -25,6 +25,21 @@ git pull --ff-only
 ./install --wm sway
 ```
 
+To avoid remembering updates, the installer also installs a user-level systemd
+timer. Enable it once with:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now personal-dotfiles-update.timer
+```
+
+It checks GitHub weekly and, when the checkout advances, reapplies the Sway
+configuration. It does not install packages or restart Sway. Managed files are
+backed up by the normal installer before replacement. The timer runs while your
+user session is active and catches up after a missed scheduled run. Check its
+next run with `systemctl --user list-timers`; inspect the last run with
+`journalctl --user -u personal-dotfiles-update.service`.
+
 `check` reports missing commands, installable Debian packages, and package
 names unavailable from the laptop's configured apt sources. If packages are
 unavailable or apt installation is restricted, give the output to your system

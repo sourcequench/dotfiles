@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly personal dotfiles update
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+RandomizedDelaySec=1h
+Unit=personal-dotfiles-update.service
+
+[Install]
+WantedBy=timers.target
