@@ -1,0 +1,51 @@
+#!/bin/sh
+set -eu
+
+runtime_dir=${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}
+umask 077
+status_config=$(mktemp "$runtime_dir/personal-i3status.XXXXXX")
+status_pid=
+cleanup() {
+    if [ -n "$status_pid" ]; then
+        kill "$status_pid" 2>/dev/null || true
+        wait "$status_pid" 2>/dev/null || true
+    fi
+    rm -f "$status_config"
+}
+trap cleanup EXIT HUP INT TERM
+
+cat > "$status_config" <<'EOF'
+general {
+    output_format = "i3bar"
+    colors = true
+    interval = 5
+}
+EOF
+
+battery_index=0
+for supply in /sys/class/power_supply/*; do
+    [ -r "$supply/type" ] || continue
+    [ "$(cat "$supply/type")" = Battery ] || continue
+    [ -r "$supply/uevent" ] || continue
+    name=${supply##*/}
+    {
+        printf 'order += "battery %s"\n' "$battery_index"
+        printf 'battery %s {\n' "$battery_index"
+        printf '    path = "%s/uevent"\n' "$supply"
+        printf '    format = "%s: %%status %%percentage %%remaining"\n' "$name"
+        printf '    last_full_capacity = true\n'
+        printf '}\n'
+    } >> "$status_config"
+    battery_index=$((battery_index + 1))
+done
+
+cat >> "$status_config" <<'EOF'
+order += "tztime local"
+tztime local {
+    format = "%Y-%m-%d %H:%M:%S"
+}
+EOF
+
+i3status --config "$status_config" &
+status_pid=$!
+wait "$status_pid"

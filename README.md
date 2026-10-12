@@ -66,6 +66,9 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
 - Alt+Return starts kitty; Alt+d launches the detected menu.
 - i3 uses dmenu when available. Sway prefers wmenu, then fuzzel, then tofi.
 - Dunst, wpctl, brightnessctl, and tmux key behavior are shared.
+- The status bar uses i3status and detects battery devices at startup. It shows
+  percentage and time remaining for each battery, and omits battery blocks on
+  desktops and VMs without batteries.
 - Sway uses swayidle/swaylock and grim/slurp/wl-clipboard. i3 uses
   xss-lock/i3lock and maim/xclip.
 - Gemini and Goose remain in the shared status line as labels; tmux does not

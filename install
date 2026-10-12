@@ -96,6 +96,7 @@ install -m 0644 "$source_dir/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf"
 install -m 0755 "$source_dir/bin/personal-launcher" "$HOME/.local/bin/personal-launcher"
 install -m 0755 "$source_dir/bin/personal-lock" "$HOME/.local/bin/personal-lock"
 install -m 0755 "$source_dir/bin/personal-screenshot" "$HOME/.local/bin/personal-screenshot"
+install -m 0755 "$source_dir/bin/personal-status" "$HOME/.local/bin/personal-status"
 [ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"
 printf 'source-file ~/.config/personal-dotfiles/tmux.conf\n' > "$HOME/.tmux.conf"
 if [ "$wm" = i3 ] || [ "$wm" = both ]; then install -m 0644 "$source_dir/wm/i3.conf" "$cfg/i3.conf"; printf 'include ~/.config/personal-dotfiles/i3.conf\n' > "$HOME/.config/i3/config"; fi
