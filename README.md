@@ -6,7 +6,7 @@ Ansible. The bundle works offline after it has been copied to the target.
 
 ## Build and install
 
-From a checkout of this private repository, run the installer directly. There
+From a checkout of this public repository, run the installer directly. There
 is no separate bundle to fetch when the laptop can clone or pull the repo:
 
 ```sh
@@ -92,8 +92,11 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
 - The installer never installs Goose or other network-fetched user tools.
 
 The optional `build-bundle` command creates a single-file archive for machines
-that cannot clone the private repository. That offline transfer route is
+that cannot clone the public repository. That offline transfer route is
 separate from the normal clone/pull workflow. The `packages` command prints
 the package names selected for a mode. `check` verifies installed commands,
 OS identity, and package availability without changing the machine.
+
+For the work-laptop setup and scheduled update instructions, see
+[WORK-MACHINES.md](WORK-MACHINES.md).
 
