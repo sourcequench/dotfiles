@@ -97,6 +97,6 @@ separate from the normal clone/pull workflow. The `packages` command prints
 the package names selected for a mode. `check` verifies installed commands,
 OS identity, and package availability without changing the machine.
 
-For the work-laptop setup and scheduled update instructions, see
-[WORK-MACHINES.md](WORK-MACHINES.md).
+For setup and scheduled update instructions for externally managed machines,
+see [UNMANAGED-MACHINES.md](UNMANAGED-MACHINES.md).
 

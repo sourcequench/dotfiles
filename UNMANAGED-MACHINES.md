@@ -1,9 +1,8 @@
-# Work Linux machines: setup and updates
+# Externally managed machines: setup and updates
 
-These instructions are for the managed Debian work laptop running Sway. They
-do not require Ansible or administrator access to install the dotfiles. The
-installer can configure the user account, but required system packages must
-already be installed (or provisioned by your administrator).
+These instructions are for Debian machines running Sway that are not managed
+with Ansible. The installer configures the user account; required system
+packages must already be installed or provisioned by the machine's administrator.
 
 ## First-time setup
 
@@ -16,10 +15,9 @@ cd ~/.local/share/personal-dotfiles
 ./install --wm sway
 ```
 
-If `check` reports missing packages or commands, ask your administrator to
-install the listed packages, then rerun `check` and `install`. Do not use
-`--install-packages` unless company policy explicitly allows user-initiated apt
-installs. The installer backs up files it manages under
+If `check` reports missing packages or commands, ask the machine's
+administrator to install the listed packages, then rerun `check` and `install`.
+The installer backs up files it manages under
 `~/.local/state/personal-dotfiles/backup-*` before replacing them.
 
 ## Enable automatic updates
