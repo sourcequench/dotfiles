@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+out="$root/dist"
+mkdir -p "$out"
+bundle="$out/dotfiles.run"
+tmp="$bundle.tmp.$$"
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+
+tar -C "$root" -czf - src | {
+    cat "$root/install"
+    printf '\n__PERSONAL_DOTFILES_PAYLOAD_BELOW__\n'
+    base64
+} > "$tmp"
+chmod 0755 "$tmp"
+mv "$tmp" "$bundle"
+printf 'Built %s\n' "$bundle"
+

@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+mode=${1:-sway}
+missing=0
+check() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        printf 'missing command: %s\n' "$1"
+        missing=1
+    fi
+}
+check tmux
+check kitty
+check dunst
+check i3status
+check wpctl
+check brightnessctl
+case "$mode" in
+    sway)
+        check sway; check swayidle; check swaylock; check grim; check slurp; check wl-copy
+        if ! command -v wmenu-run >/dev/null 2>&1 && ! command -v fuzzel >/dev/null 2>&1 && ! command -v tofi >/dev/null 2>&1; then
+            echo 'missing command: one of wmenu-run, fuzzel, or tofi'
+            missing=1
+        fi ;;
+    i3)
+        check i3; check xss-lock; check i3lock; check maim; check xclip; check dmenu_run ;;
+    both)
+        "$0" sway || missing=1
+        "$0" i3 || missing=1
+        exit "$missing" ;;
+    *) echo "usage: personal-deps i3|sway|both" >&2; exit 2 ;;
+esac
+exit "$missing"
+

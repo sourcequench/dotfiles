@@ -1,0 +1,3 @@
+keycode 206 = Control_L NoSymbol Control_L
+clear mod4
+add control = Control_L

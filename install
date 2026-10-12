@@ -1,0 +1,103 @@
+#!/bin/sh
+set -eu
+action=install
+case "${1:-}" in
+    check|packages|install) action=$1; shift ;;
+    -h|--help) echo 'Usage: ./install [check|packages|install] --wm i3|sway|both [--install-packages] [--dry-run]'; exit 0 ;;
+esac
+wm=sway; do_packages=0; dry_run=0; source_dir=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --wm) wm=$2; shift 2 ;;
+        --install-packages) do_packages=1; shift ;;
+        --dry-run) dry_run=1; shift ;;
+        --source) source_dir=$2; shift 2 ;;
+        -h|--help) echo 'Usage: dotfiles.run check|packages|install --wm i3|sway|both [--install-packages] [--dry-run]'; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+case "$action:$wm" in check:i3|check:sway|check:both|packages:i3|packages:sway|packages:both|install:i3|install:sway|install:both) ;; *) echo 'Usage: dotfiles.run check|packages|install --wm i3|sway|both [--install-packages] [--dry-run]' >&2; exit 2 ;; esac
+if [ -z "$source_dir" ]; then
+    script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    if [ -d "$script_dir/src" ]; then source_dir=$script_dir/src; fi
+fi
+if [ -z "$source_dir" ]; then
+    marker=__PERSONAL_DOTFILES_PAYLOAD_BELOW__
+    grep -qx "$marker" "$0" || { echo 'Bundle payload missing; build with ./build-bundle.' >&2; exit 1; }
+    temp=$(mktemp -d "${TMPDIR:-/tmp}/personal-dotfiles.XXXXXX")
+    trap 'rm -rf "$temp"' EXIT HUP INT TERM
+    sed -n "/^$marker$/,$ p" "$0" | tail -n +2 | base64 -d | tar -xz -C "$temp"
+    source_dir=$temp/src
+fi
+os_id=$(sed -n 's/^ID=//p' /etc/os-release | head -n 1 | tr -d '"')
+codename=$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | head -n 1 | tr -d '"')
+[ "$os_id" = debian ] || { echo "Expected Debian (ID=debian), got $os_id." >&2; exit 1; }
+base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libnotify-bin'
+i3='i3-wm i3lock suckless-tools picom dex xss-lock maim xclip xinput x11-xkb-utils x11-xserver-utils'
+sway='sway swayidle swaylock xwayland grim slurp wl-clipboard'
+pkgs=$base
+case "$wm" in i3) pkgs="$pkgs $i3" ;; sway) pkgs="$pkgs $sway" ;; both) pkgs="$pkgs $i3 $sway" ;; esac
+missing=; unavailable=; commands='tmux kitty dunst i3status wpctl brightnessctl'; commands_missing=
+case "$wm" in
+    sway|both)
+        launcher_found=0
+        for candidate in wmenu fuzzel tofi; do
+            installed=$(dpkg-query -W -f='${db:Status-Status}' "$candidate" 2>/dev/null || true)
+            if [ "$installed" = installed ]; then launcher_found=1; break; fi
+            version=$(apt-cache policy "$candidate" 2>/dev/null | sed -n 's/^  Candidate: //p' | head -n 1)
+            if [ -n "$version" ] && [ "$version" != '(none)' ]; then pkgs="$pkgs $candidate"; launcher_found=1; break; fi
+        done
+        [ "$launcher_found" -eq 1 ] || unavailable="$unavailable wmenu|fuzzel|tofi"
+        ;;
+esac
+case "$wm" in i3) commands="$commands i3 xss-lock i3lock maim xclip dmenu_run" ;; sway) commands="$commands sway swayidle swaylock grim slurp wl-copy" ;; both) commands="$commands i3 xss-lock i3lock maim xclip dmenu_run sway swayidle swaylock grim slurp wl-copy" ;; esac
+for pkg in $pkgs; do
+    state=$(dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null || true)
+    if [ "$state" != installed ]; then
+        cand=$(apt-cache policy "$pkg" 2>/dev/null | sed -n 's/^  Candidate: //p' | head -n 1)
+        if [ -z "$cand" ] || [ "$cand" = '(none)' ]; then unavailable="$unavailable $pkg"; else missing="$missing $pkg"; fi
+    fi
+done
+has_launcher=0
+for cmd in $commands; do command -v "$cmd" >/dev/null 2>&1 || commands_missing="$commands_missing $cmd"; done
+case "$wm" in sway|both) for cmd in wmenu-run fuzzel tofi; do command -v "$cmd" >/dev/null 2>&1 && has_launcher=1; done; [ "$has_launcher" -eq 1 ] || commands_missing="$commands_missing wmenu-run|fuzzel|tofi" ;; esac
+printf 'OS: Debian, codename %s; window manager: %s\n' "${codename:-unknown}" "$wm"
+if [ "$action" = packages ]; then
+    printf 'Selected packages:%s\n' "$pkgs"
+    [ -z "$missing" ] || printf 'Missing, available from apt:%s\n' "$missing"
+    [ -z "$unavailable" ] || printf 'Unavailable from configured apt sources:%s\n' "$unavailable"
+    exit 0
+fi
+[ -z "$missing" ] || printf 'Missing installable packages:%s\n' "$missing"
+[ -z "$unavailable" ] || printf 'Unavailable package names:%s\n' "$unavailable"
+[ -z "$commands_missing" ] || printf 'Missing commands:%s\n' "$commands_missing"
+if [ "$action" = check ]; then [ -z "$missing$unavailable$commands_missing" ]; exit $?; fi
+[ -z "$unavailable" ] || { echo 'Unavailable package names prevent installation.' >&2; exit 1; }
+if [ -n "$missing" ]; then
+    [ "$do_packages" -eq 1 ] || { echo 'Use --install-packages to install missing packages.' >&2; exit 1; }
+    if [ "$dry_run" -eq 1 ]; then printf 'Would install:%s\n' "$missing"; exit 0; fi
+    sudo apt-get update
+    # Intentional word splitting into apt package arguments.
+    sudo apt-get install -y -- $missing
+fi
+"$source_dir/bin/personal-deps" "$wm" || { echo 'Missing required commands; configuration unchanged.' >&2; exit 1; }
+[ "$dry_run" -eq 0 ] || { echo 'Dry run complete.'; exit 0; }
+cfg="$HOME/.config/personal-dotfiles"; backup="$HOME/.local/state/personal-dotfiles/backup-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$cfg" "$HOME/.local/bin" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway"
+for file in "$cfg/shared.conf" "$cfg/i3.conf" "$cfg/sway.conf" "$cfg/local-wm.conf" "$HOME/.tmux.conf" "$HOME/.Xmodmap" "$HOME/.config/kitty/kitty.conf" "$HOME/.config/i3/config" "$HOME/.config/sway/config"; do
+    if [ -e "$file" ]; then rel=${file#"$HOME/"}; mkdir -p "$backup/$(dirname "$rel")"; cp -a "$file" "$backup/$rel"; fi
+done
+[ ! -d "$backup" ] || printf 'Backup saved at %s\n' "$backup"
+install -m 0644 "$source_dir/wm/shared.conf" "$cfg/shared.conf"
+install -m 0644 "$source_dir/tmux/common.conf" "$cfg/tmux.conf"
+install -m 0644 "$source_dir/tmux/work.conf" "$cfg/work.conf"
+install -m 0644 "$source_dir/Xmodmap" "$HOME/.Xmodmap"
+install -m 0644 "$source_dir/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf"
+install -m 0755 "$source_dir/bin/personal-launcher" "$HOME/.local/bin/personal-launcher"
+install -m 0755 "$source_dir/bin/personal-lock" "$HOME/.local/bin/personal-lock"
+install -m 0755 "$source_dir/bin/personal-screenshot" "$HOME/.local/bin/personal-screenshot"
+[ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"
+printf 'source-file ~/.config/personal-dotfiles/tmux.conf\n' > "$HOME/.tmux.conf"
+if [ "$wm" = i3 ] || [ "$wm" = both ]; then install -m 0644 "$source_dir/wm/i3.conf" "$cfg/i3.conf"; printf 'include ~/.config/personal-dotfiles/i3.conf\n' > "$HOME/.config/i3/config"; fi
+if [ "$wm" = sway ] || [ "$wm" = both ]; then install -m 0644 "$source_dir/wm/sway.conf" "$cfg/sway.conf"; printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/config"; fi
+echo 'Install complete. Log out and select the configured session to use it.'

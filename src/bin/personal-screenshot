@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
+    command -v slurp >/dev/null 2>&1 || { echo "slurp is required for region selection." >&2; exit 127; }
+    grim -g "$(slurp)" - | wl-copy --type image/png
+else
+    maim -s -u | xclip -selection clipboard -t image/png -i
+fi
+

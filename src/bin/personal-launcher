@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
+    for app in wmenu-run fuzzel tofi; do
+        if command -v "$app" >/dev/null 2>&1; then exec "$app" "$@"; fi
+    done
+    echo "No Wayland launcher found (install wmenu, fuzzel, or tofi)." >&2
+    exit 127
+fi
+if command -v dmenu_run >/dev/null 2>&1; then exec dmenu_run "$@"; fi
+echo "No X11 launcher found (install suckless-tools for dmenu_run)." >&2
+exit 127
+
