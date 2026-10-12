@@ -2,12 +2,6 @@
 set -eu
 
 repo=${PERSONAL_DOTFILES_REPO:-"$HOME/.local/share/personal-dotfiles"}
-wm=${1:-sway}
-
-case "$wm" in
-    i3|sway|both) ;;
-    *) echo "Usage: personal-dotfiles-update [i3|sway|both]" >&2; exit 2 ;;
-esac
 
 if [ ! -d "$repo/.git" ]; then
     echo "Dotfiles checkout not found at $repo" >&2
@@ -17,12 +11,12 @@ fi
 git -C "$repo" pull --ff-only
 commit=$(git -C "$repo" rev-parse HEAD)
 state_dir=${XDG_STATE_HOME:-"$HOME/.local/state"}/personal-dotfiles
-state_file=$state_dir/auto-updated-$wm
+state_file=$state_dir/auto-updated
 if [ -r "$state_file" ] && [ "$(cat "$state_file")" = "$commit" ]; then
     echo "Dotfiles are already applied at $commit"
     exit 0
 fi
 
-"$repo/install" --wm "$wm"
+"$repo/install"
 mkdir -p "$state_dir"
 printf '%s\n' "$commit" > "$state_file"

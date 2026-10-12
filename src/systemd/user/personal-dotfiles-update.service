@@ -3,4 +3,4 @@ Description=Update personal dotfiles and reapply configuration
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/personal-dotfiles-update sway
+ExecStart=%h/.local/bin/personal-dotfiles-update

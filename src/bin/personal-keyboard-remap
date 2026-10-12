@@ -1,0 +1,17 @@
+#!/bin/sh
+# Called by inputplug with: action device_id device_type [device_name...]
+action=$1
+device_type=$3
+
+case "$action" in
+    XIDeviceEnabled|XISlaveAdded) ;;
+    *) exit 0 ;;
+esac
+
+case "$device_type" in
+    XISlaveKeyboard|XIMasterKeyboard) ;;
+    *) exit 0 ;;
+esac
+
+setxkbmap -option altwin:ctrl_win
+[ -f "$HOME/.Xmodmap" ] && xmodmap "$HOME/.Xmodmap"
