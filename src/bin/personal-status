@@ -39,7 +39,36 @@ for supply in /sys/class/power_supply/*; do
     battery_index=$((battery_index + 1))
 done
 
+has_wireless=false
+for wireless_dir in /sys/class/net/*/wireless; do
+    [ -d "$wireless_dir" ] || continue
+    has_wireless=true
+    break
+done
+
+if [ "$has_wireless" = true ]; then
+    cat >> "$status_config" <<'EOF'
+order += "wireless _first_"
+wireless _first_ {
+    format_up = "Wi-Fi: %essid %quality"
+    format_down = "Wi-Fi: disconnected"
+}
+EOF
+fi
+
 cat >> "$status_config" <<'EOF'
+order += "cpu_usage"
+cpu_usage {
+    format = "CPU %usage"
+}
+order += "memory"
+memory {
+    format = "MEM %used"
+}
+order += "disk /"
+disk "/" {
+    format = "/ %avail"
+}
 order += "tztime local"
 tztime local {
     format = "%Y-%m-%d %H:%M:%S"
