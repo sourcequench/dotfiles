@@ -32,7 +32,7 @@ codename=$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | head -n 1 | tr -d 
 [ "$os_id" = debian ] || { echo "Expected Debian (ID=debian), got $os_id." >&2; exit 1; }
 base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libnotify-bin network-manager-applet blueman'
 i3pkgs='i3-wm i3lock suckless-tools picom dex xss-lock maim xclip xinput x11-xkb-utils x11-xserver-utils inputplug'
-swaypkgs='sway swayidle swaylock xwayland grim slurp wl-clipboard waybar'
+swaypkgs='sway swayidle swaylock xwayland grim slurp wl-clipboard waybar xdg-desktop-portal xdg-desktop-portal-wlr'
 pkgs="$base $i3pkgs $swaypkgs"
 missing=; unavailable=; commands_missing=
 commands='tmux kitty dunst i3status wpctl brightnessctl i3 xss-lock i3lock maim xclip dmenu_run inputplug sway swayidle swaylock grim slurp wl-copy'
@@ -107,4 +107,5 @@ printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/c
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now personal-dotfiles-update.timer 2>/dev/null || true
+systemctl --user start xdg-desktop-portal xdg-desktop-portal-wlr 2>/dev/null || true
 echo 'Install complete. Log out and select the configured session to use it.'
