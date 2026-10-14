@@ -98,6 +98,8 @@ install -m 0755 "$source_dir/bin/personal-status" "$HOME/.local/bin/personal-sta
 install -m 0755 "$source_dir/bin/personal-dotfiles-update" "$HOME/.local/bin/personal-dotfiles-update"
 install -m 0755 "$source_dir/bin/personal-keyboard-remap" "$HOME/.local/bin/personal-keyboard-remap"
 install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/personal-apps-install"
+install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-signal"
+install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"
 [ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"

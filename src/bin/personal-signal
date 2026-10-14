@@ -1,0 +1,9 @@
+#!/bin/sh
+if command -v signal-desktop >/dev/null 2>&1; then
+    exec signal-desktop --password-store=gnome-libsecret "$@"
+fi
+if [ -x "$HOME/bin/opt/Signal/signal-desktop" ]; then
+    exec "$HOME/bin/opt/Signal/signal-desktop" --password-store=gnome-libsecret "$@"
+fi
+echo 'personal-signal: signal-desktop not found' >&2
+exit 1

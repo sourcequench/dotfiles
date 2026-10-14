@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+export PATH="$HOME/.local/bin:$PATH"
 if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
     for app in wmenu-run fuzzel tofi; do
         if command -v "$app" >/dev/null 2>&1; then exec "$app" "$@"; fi
