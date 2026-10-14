@@ -25,11 +25,20 @@
         dest: /usr/share/keyrings/signal-desktop-keyring.gpg
         mode: '0644'
 
+    - name: Remove legacy Signal apt list if present
+      file:
+        path: /etc/apt/sources.list.d/signal-xenial.list
+        state: absent
+
     - name: Add Signal Desktop apt repo
       copy:
-        dest: /etc/apt/sources.list.d/signal-xenial.list
+        dest: /etc/apt/sources.list.d/signal-xenial.sources
         content: |
-          deb [arch=amd64 signed-by=/usr/share/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main
+          Types: deb
+          URIs: https://updates.signal.org/desktop/apt/
+          Suites: xenial
+          Components: main
+          Signed-By: /usr/share/keyrings/signal-desktop-keyring.gpg
         mode: '0644'
 
     - name: Add Helium apt key
@@ -57,6 +66,7 @@
     - name: Update apt cache
       apt:
         update_cache: yes
+      ignore_errors: yes
 
     - name: Install Signal and Helium
       apt:
@@ -75,17 +85,23 @@
           };
         mode: '0644'
 
+    - name: Get user home directory
+      become: no
+      command: echo $HOME
+      register: _user_home
+      changed_when: false
+
     - name: Clone dotfiles repo
       become: no
       git:
         repo: git@github.com:sourcequench/dotfiles.git
-        dest: "{{ ansible_env.HOME }}/.local/share/personal-dotfiles"
+        dest: "{{ _user_home.stdout }}/.local/share/personal-dotfiles"
         accept_hostkey: yes
 
     - name: Run dotfiles install
       become: no
       command:
-        cmd: "{{ ansible_env.HOME }}/.local/share/personal-dotfiles/install --install-packages"
+        cmd: "{{ _user_home.stdout }}/.local/share/personal-dotfiles/install --install-packages"
       register: install_result
       changed_when: install_result.rc == 0
 
