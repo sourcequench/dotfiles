@@ -18,7 +18,7 @@ install_signal() {
         'https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages.gz' \
         | zcat | grep '^Filename:' \
         | sed 's_Filename: _https://updates.signal.org/desktop/apt/_' \
-        | grep -v beta | tail -1)
+        | grep -v beta | head -1)
     [ -n "$latest_url" ] || { echo 'personal-apps-install: cannot determine Signal URL' >&2; return 1; }
     state_file="$state_dir/signal-url"
     if [ -x "$HOME/.local/bin/signal-desktop" ] && [ -f "$state_file" ] \
