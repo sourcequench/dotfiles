@@ -8,7 +8,10 @@ state_dir="$HOME/.local/state/personal-apps"
 mkdir -p "$state_dir" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/bin"
 
 install_signal() {
-    if dpkg -l signal-desktop 2>/dev/null | grep -q '^ii'; then
+    # Only skip if our apt repo is configured — dpkg status alone is unreliable
+    # (old installs can leave ii entries even when the repo is gone)
+    if [ -f /etc/apt/sources.list.d/signal-xenial.sources ] || \
+       [ -f /etc/apt/sources.list.d/signal-xenial.list ]; then
         return 0
     fi
     latest_url=$(curl -fsSL \
@@ -37,7 +40,7 @@ install_signal() {
 }
 
 install_helium() {
-    if dpkg -l helium-bin 2>/dev/null | grep -q '^ii'; then
+    if [ -f /etc/apt/sources.list.d/helium.sources ]; then
         return 0
     fi
     filename=$(curl -fsSL \
