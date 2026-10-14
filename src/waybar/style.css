@@ -7,33 +7,58 @@
 }
 
 window#waybar {
-    background-color: #323232;
+    background-color: #1e1e1e;
     color: #ffffff;
 }
 
 #workspaces button {
     padding: 0 5px;
     background-color: transparent;
-    color: #ffffff;
+    color: #888888;
 }
 
 #workspaces button.focused {
     background-color: #285577;
+    color: #ffffff;
 }
 
 #workspaces button:hover {
     background-color: #404040;
 }
 
-#clock,
-#battery,
-#cpu,
-#memory,
-#disk,
-#network,
-#bluetooth,
-#tray {
+#clock {
+    padding: 0 10px;
+    color: #ffffff;
+}
+
+#network {
     padding: 0 8px;
+    color: #88c0d0;
+}
+
+#bluetooth {
+    padding: 0 8px;
+    color: #b48ead;
+}
+
+#cpu {
+    padding: 0 8px;
+    color: #a3be8c;
+}
+
+#memory {
+    padding: 0 8px;
+    color: #ebcb8b;
+}
+
+#disk {
+    padding: 0 8px;
+    color: #d08770;
+}
+
+#battery {
+    padding: 0 8px;
+    color: #8fbcbb;
 }
 
 #battery.warning {
@@ -41,9 +66,13 @@ window#waybar {
 }
 
 #battery.critical {
-    color: #ff0000;
+    color: #ff5555;
 }
 
 #network.disconnected {
     color: #ff5555;
+}
+
+#tray {
+    padding: 0 8px;
 }
