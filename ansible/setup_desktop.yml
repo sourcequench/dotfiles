@@ -1,0 +1,98 @@
+---
+# Run against machines where we have full control (non-work-managed).
+# Adds Signal and Helium apt repos and keeps them in unattended-upgrades.
+#
+# Usage: ansible-playbook -i HOSTS ansible/setup_desktop.yml
+#
+# Hosts file example:
+#   [workstations]
+#   server ansible_host=172.16.1.45 ansible_user=ryan
+- name: Set up personal desktop environment
+  hosts: workstations
+  become: yes
+  tasks:
+    - name: Install apt-transport-https and curl
+      apt:
+        name:
+          - apt-transport-https
+          - curl
+          - unattended-upgrades
+        state: present
+
+    - name: Add Signal Desktop apt key
+      get_url:
+        url: https://updates.signal.org/desktop/apt/keys.asc
+        dest: /usr/share/keyrings/signal-desktop-keyring.gpg
+        mode: '0644'
+
+    - name: Add Signal Desktop apt repo
+      copy:
+        dest: /etc/apt/sources.list.d/signal-xenial.list
+        content: |
+          deb [arch=amd64 signed-by=/usr/share/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main
+        mode: '0644'
+
+    - name: Add Helium apt key
+      get_url:
+        url: https://raw.githubusercontent.com/imputnet/helium-linux/main/pubkey.asc
+        dest: /tmp/helium-pubkey.asc
+        mode: '0644'
+
+    - name: Dearmor Helium apt key
+      command: gpg --dearmor -o /usr/share/keyrings/helium.gpg /tmp/helium-pubkey.asc
+      args:
+        creates: /usr/share/keyrings/helium.gpg
+
+    - name: Add Helium apt repo
+      copy:
+        dest: /etc/apt/sources.list.d/helium.sources
+        content: |
+          Types: deb
+          URIs: https://pkg.helium.computer/deb/
+          Suites: stable
+          Components: main
+          Signed-By: /usr/share/keyrings/helium.gpg
+        mode: '0644'
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Signal and Helium
+      apt:
+        name:
+          - signal-desktop
+          - helium-bin
+        state: present
+
+    - name: Configure unattended-upgrades to include Signal and Helium
+      copy:
+        dest: /etc/apt/apt.conf.d/52personal-apps
+        content: |
+          Unattended-Upgrade::Allowed-Origins {
+              "updates.signal.org:xenial";
+              "pkg.helium.computer:stable";
+          };
+        mode: '0644'
+
+    - name: Clone dotfiles repo
+      become: no
+      git:
+        repo: git@github.com:sourcequench/dotfiles.git
+        dest: "{{ ansible_env.HOME }}/.local/share/personal-dotfiles"
+        accept_hostkey: yes
+
+    - name: Run dotfiles install
+      become: no
+      command:
+        cmd: "{{ ansible_env.HOME }}/.local/share/personal-dotfiles/install --install-packages"
+      register: install_result
+      changed_when: install_result.rc == 0
+
+    - name: Enable personal-dotfiles-update timer
+      become: no
+      systemd:
+        name: personal-dotfiles-update.timer
+        enabled: yes
+        state: started
+        scope: user

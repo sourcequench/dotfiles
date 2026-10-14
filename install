@@ -97,6 +97,7 @@ install -m 0755 "$source_dir/bin/personal-screenshot" "$HOME/.local/bin/personal
 install -m 0755 "$source_dir/bin/personal-status" "$HOME/.local/bin/personal-status"
 install -m 0755 "$source_dir/bin/personal-dotfiles-update" "$HOME/.local/bin/personal-dotfiles-update"
 install -m 0755 "$source_dir/bin/personal-keyboard-remap" "$HOME/.local/bin/personal-keyboard-remap"
+install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/personal-apps-install"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"
 [ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"
@@ -105,6 +106,7 @@ install -m 0644 "$source_dir/wm/i3.conf" "$cfg/i3.conf"
 printf 'include ~/.config/personal-dotfiles/i3.conf\n' > "$HOME/.config/i3/config"
 install -m 0644 "$source_dir/wm/sway.conf" "$cfg/sway.conf"
 printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/config"
+"$HOME/.local/bin/personal-apps-install" || true
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now personal-dotfiles-update.timer 2>/dev/null || true

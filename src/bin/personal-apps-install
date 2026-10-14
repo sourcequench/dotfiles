@@ -1,0 +1,66 @@
+#!/bin/sh
+# Install signal-desktop and helium on machines where apt repos cannot be added.
+# If the packages are already managed by apt, this script skips them.
+# Stores the last-installed URL in ~/.local/state/personal-apps/ for update detection.
+set -eu
+
+state_dir="$HOME/.local/state/personal-apps"
+mkdir -p "$state_dir" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/bin"
+
+install_signal() {
+    if dpkg -l signal-desktop 2>/dev/null | grep -q '^ii'; then
+        return 0
+    fi
+    latest_url=$(curl -fsSL \
+        'https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages.gz' \
+        | zcat | grep '^Filename:' \
+        | sed 's_Filename: _https://updates.signal.org/desktop/apt/_' \
+        | grep -v beta | tail -1)
+    [ -n "$latest_url" ] || { echo 'personal-apps-install: cannot determine Signal URL' >&2; return 1; }
+    state_file="$state_dir/signal-url"
+    if [ -x "$HOME/.local/bin/signal-desktop" ] && [ -f "$state_file" ] \
+            && [ "$(cat "$state_file")" = "$latest_url" ]; then
+        return 0
+    fi
+    printf 'Installing Signal from %s\n' "$latest_url"
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+    curl -fsSL -o "$tmp/signal.deb" "$latest_url"
+    dpkg-deb -x "$tmp/signal.deb" "$HOME/bin"
+    ln -sf "$HOME/bin/opt/Signal/signal-desktop" "$HOME/.local/bin/signal-desktop"
+    for f in "$HOME/bin/opt/Signal/"*.desktop \
+              "$HOME/bin/usr/share/applications/signal-desktop.desktop"; do
+        [ -f "$f" ] && cp "$f" "$HOME/.local/share/applications/signal-desktop.desktop" && break
+    done
+    printf '%s\n' "$latest_url" > "$state_file"
+    echo 'Signal installed.'
+}
+
+install_helium() {
+    if dpkg -l helium-bin 2>/dev/null | grep -q '^ii'; then
+        return 0
+    fi
+    filename=$(curl -fsSL \
+        'https://pkg.helium.computer/deb/dists/stable/main/binary-amd64/Packages.gz' \
+        | zcat | grep '^Filename:' | head -1 | sed 's/^Filename: //')
+    [ -n "$filename" ] || { echo 'personal-apps-install: cannot determine Helium URL' >&2; return 1; }
+    latest_url="https://pkg.helium.computer/deb/$filename"
+    state_file="$state_dir/helium-url"
+    if [ -x "$HOME/.local/bin/helium" ] && [ -f "$state_file" ] \
+            && [ "$(cat "$state_file")" = "$latest_url" ]; then
+        return 0
+    fi
+    printf 'Installing Helium from %s\n' "$latest_url"
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+    curl -fsSL -o "$tmp/helium.deb" "$latest_url"
+    dpkg-deb -x "$tmp/helium.deb" "$HOME/bin"
+    ln -sf "$HOME/bin/opt/helium/helium-wrapper" "$HOME/.local/bin/helium"
+    desktop_src="$HOME/bin/opt/helium/helium.desktop"
+    [ -f "$desktop_src" ] && cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
+    printf '%s\n' "$latest_url" > "$state_file"
+    echo 'Helium installed.'
+}
+
+install_signal
+install_helium
