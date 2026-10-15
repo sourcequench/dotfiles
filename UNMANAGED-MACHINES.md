@@ -1,41 +1,45 @@
 # Externally managed machines: setup and updates
 
-These instructions are for Debian machines running Sway that are not managed
-with Ansible. The installer configures the user account; required system
-packages must already be installed or provisioned by the machine's administrator.
+These instructions are for Debian machines that are not managed with Ansible
+(e.g. work-managed machines). The installer configures the user account;
+required system packages must already be installed or the machine's
+administrator must install them.
 
 ## First-time setup
-
-Clone the public repository, check requirements, and install the configuration:
 
 ```sh
 git clone https://github.com/sourcequench/dotfiles.git ~/.local/share/personal-dotfiles
 cd ~/.local/share/personal-dotfiles
-./install check --wm sway
-./install --wm sway
+./install check
+./install --install-packages
 ```
 
-If `check` reports missing packages or commands, ask the machine's
-administrator to install the listed packages, then rerun `check` and `install`.
-The installer backs up files it manages under
-`~/.local/state/personal-dotfiles/backup-*` before replacing them.
+If `check` reports unavailable packages, ask the administrator to install them,
+then rerun. The installer sets up both i3 and sway, installs Signal and Helium
+to `~/bin` (if the apt repos are not configured), and enables a weekly
+auto-update timer.
 
-## Enable automatic updates
+Backups of replaced files are saved under
+`~/.local/state/personal-dotfiles/backup-*`.
 
-The installer provides a systemd *user* timer. Enable it once:
+## Ansible (machines you control)
+
+For machines where you have full access (personal workstations, servers):
 
 ```sh
-systemctl --user daemon-reload
-systemctl --user enable --now personal-dotfiles-update.timer
+ansible-playbook -i ~/md/home/ansible/hosts ansible/setup_desktop.yml --limit workstation
 ```
 
-It checks GitHub weekly while your user session is active, catches up after a
-missed run, and reapplies the Sway config only when a newer commit has not yet
-been successfully applied. It does not install packages or restart Sway. If an
-update cannot be installed (for example, a required command is missing), the
-next scheduled run tries again. Review backups before removing any old ones.
+This adds the Signal and Helium apt repos, installs packages, clones the
+dotfiles, runs install, and enables the update timer.
 
-Useful checks:
+## Manual update
+
+```sh
+cd ~/.local/share/personal-dotfiles && git pull && ./install
+```
+
+## Useful checks
 
 ```sh
 systemctl --user list-timers
@@ -43,19 +47,5 @@ systemctl --user status personal-dotfiles-update.timer
 journalctl --user -u personal-dotfiles-update.service
 ```
 
-## Manual update or recovery
-
-To update immediately and inspect requirements first:
-
-```sh
-cd ~/.local/share/personal-dotfiles
-git pull --ff-only
-./install check --wm sway
-./install --wm sway
-```
-
-If the timer reports an error, read the service journal above, fix the reported
-issue, and run the manual update. If the machine does not permit user systemd
-timers, use the manual commands periodically instead. After applying a Sway
-config change, press `Mod+Shift+c` to reload Sway; logging out is not normally
-needed.
+After a config change, reload sway with `Alt+Shift+C` or i3 with `Alt+Shift+R`.
+Logging out and back in is only needed after first install or package changes.
