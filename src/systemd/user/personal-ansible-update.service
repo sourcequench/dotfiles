@@ -1,0 +1,7 @@
+[Unit]
+Description=Update managed machines via ansible dotfiles playbook
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/personal-ansible-update

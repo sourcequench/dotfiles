@@ -103,6 +103,11 @@ install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-sig
 install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"
+if command -v ansible-playbook >/dev/null 2>&1; then
+    install -m 0755 "$source_dir/bin/personal-ansible-update" "$HOME/.local/bin/personal-ansible-update"
+    install -m 0644 "$source_dir/systemd/user/personal-ansible-update.service" "$HOME/.config/systemd/user/personal-ansible-update.service"
+    install -m 0644 "$source_dir/systemd/user/personal-ansible-update.timer" "$HOME/.config/systemd/user/personal-ansible-update.timer"
+fi
 [ -e "$cfg/local-wm.conf" ] || : > "$cfg/local-wm.conf"
 printf 'source-file ~/.config/personal-dotfiles/tmux.conf\n' > "$HOME/.tmux.conf"
 install -m 0644 "$source_dir/wm/i3.conf" "$cfg/i3.conf"
@@ -113,5 +118,9 @@ printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/c
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now personal-dotfiles-update.timer 2>/dev/null || true
+if command -v ansible-playbook >/dev/null 2>&1; then
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user enable --now personal-ansible-update.timer 2>/dev/null || true
+fi
 systemctl --user start xdg-desktop-portal xdg-desktop-portal-wlr 2>/dev/null || true
 echo 'Install complete. Log out and select the configured session to use it.'

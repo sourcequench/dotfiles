@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+inventory="$HOME/md/home/ansible/hosts"
+playbook="$HOME/.local/share/personal-dotfiles/ansible/setup_desktop.yml"
+
+[ -f "$inventory" ] || { echo "personal-ansible-update: inventory not found at $inventory" >&2; exit 1; }
+[ -f "$playbook" ] || { echo "personal-ansible-update: playbook not found at $playbook" >&2; exit 1; }
+
+if ! output=$(ansible-playbook -i "$inventory" "$playbook" 2>&1); then
+    printf '%s' "$output" | tail -50 | curl -s \
+        -H "Title: ansible dotfiles update failed" \
+        -H "Priority: high" \
+        -H "Tags: warning" \
+        --data-binary @- \
+        "https://ntfy.sourcequench.org/sourcequench" || true
+    exit 1
+fi

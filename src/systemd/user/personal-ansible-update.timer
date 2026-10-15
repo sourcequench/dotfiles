@@ -1,0 +1,9 @@
+[Unit]
+Description=Weekly ansible dotfiles update for managed machines
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
