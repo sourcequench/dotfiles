@@ -1,7 +1,38 @@
 #!/bin/sh
+# Lock the screen, skipping if on a trusted network.
+# Trusted: any wired ethernet, or WiFi in TRUSTED_SSIDS.
 set -eu
-if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
-    exec swaylock -f -c 000000 "$@"
-fi
-exec i3lock "$@"
 
+TRUSTED_SSIDS="skillet Fios-3RmbM"
+
+_skip() {
+    # Release xss-lock's sleep inhibitor fd (i3/X11 path) so sleep can proceed.
+    [ -n "${XSS_SLEEP_LOCK_FD:-}" ] && eval "exec ${XSS_SLEEP_LOCK_FD}>&-"
+    exit 0
+}
+
+if nmcli -t -f TYPE,STATE dev 2>/dev/null | grep -q '^ethernet:connected'; then
+    _skip
+fi
+
+current_ssid=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes:' | sed 's/^yes://' | head -1)
+for ssid in $TRUSTED_SSIDS; do
+    [ "$current_ssid" = "$ssid" ] && _skip
+done
+
+if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
+    exec swaylock \
+        --color 1a1a2e \
+        --inside-color 1e1e2e88 \
+        --ring-color 285577ff \
+        --ring-ver-color 88c0d0ff \
+        --ring-wrong-color bf616aff \
+        --key-hl-color 88c0d0ff \
+        --bs-hl-color ebcb8bff \
+        --text-color e5e9f0ff \
+        --separator-color 00000000 \
+        --indicator-radius 80 \
+        --indicator-thickness 8
+else
+    exec i3lock -c 1a1a2e -n
+fi
