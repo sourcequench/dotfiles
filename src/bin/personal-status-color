@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+"""Colorize i3bar JSON protocol output from i3status."""
+import sys
+import json
+
+COLORS = {
+    'wireless':  '#88c0d0',
+    'ethernet':  '#88c0d0',
+    'battery':   '#8fbcbb',
+    'cpu_usage': '#a3be8c',
+    'memory':    '#ebcb8b',
+    'disk':      '#d08770',
+    'tztime':    '#e5e9f0',
+}
+
+sys.stdout.write(next(sys.stdin))  # {"version":1}
+sys.stdout.write(next(sys.stdin))  # [
+sys.stdout.flush()
+
+first = True
+for line in sys.stdin:
+    data = line.strip().lstrip(',')
+    if not data:
+        continue
+    try:
+        blocks = json.loads(data)
+        for b in blocks:
+            name = b.get('name', '')
+            for key, color in COLORS.items():
+                if name.startswith(key):
+                    b.setdefault('color', color)
+                    break
+        sys.stdout.write(('' if first else ',') + json.dumps(blocks) + '\n')
+        sys.stdout.flush()
+        first = False
+    except Exception:
+        sys.stdout.write(line)
+        sys.stdout.flush()

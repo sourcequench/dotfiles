@@ -75,6 +75,6 @@ tztime local {
 }
 EOF
 
-i3status --config "$status_config" &
+i3status --config "$status_config" | "$HOME/.local/bin/personal-status-color" &
 status_pid=$!
 wait "$status_pid"
