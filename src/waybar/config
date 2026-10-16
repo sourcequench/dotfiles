@@ -3,7 +3,7 @@
     "position": "bottom",
     "modules-left": ["sway/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["network", "bluetooth", "cpu", "memory", "disk", "battery", "tray"],
+    "modules-right": ["custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true
@@ -57,5 +57,12 @@
 
     "tray": {
         "spacing": 10
+    },
+
+    "custom/weather": {
+        "exec": "~/.local/bin/personal-weather",
+        "return-type": "json",
+        "interval": 1800,
+        "tooltip": true
     }
 }

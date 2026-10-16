@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+import json, subprocess, sys
+
+ICONS = {
+    113: '☀️',   # ☀️  sunny
+    116: '⛅',          # ⛅  partly cloudy
+    119: '☁️',   # ☁️  cloudy
+    122: '☁️',   # ☁️  overcast
+    143: '\U0001f32b️', # 🌫️  mist
+    248: '\U0001f32b️', # 🌫️  fog
+    260: '\U0001f32b️', # 🌫️  freezing fog
+    200: '⛈️',   # ⛈️  thunderstorm
+    386: '⛈️',
+    389: '⛈️',
+    392: '⛈️',
+    395: '⛈️',
+}
+RAIN_CODES = {
+    176, 263, 266, 281, 284, 293, 296, 299, 302,
+    305, 308, 311, 314, 317, 320, 353, 356, 359, 362, 365, 374, 377,
+}
+SNOW_CODES = {185, 227, 230, 323, 326, 329, 332, 335, 338, 350}
+
+try:
+    result = subprocess.run(
+        ['curl', '-sf', '--max-time', '10', 'https://wttr.in/?format=j1'],
+        capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        raise RuntimeError('curl failed')
+
+    d = json.loads(result.stdout)
+    cur = d['current_condition'][0]
+    today = d['weather'][0]
+    temp = cur['temp_F']
+    high = today['maxtempF']
+    code = int(cur['weatherCode'])
+    desc = cur['weatherDesc'][0]['value']
+
+    if code in ICONS:
+        icon = ICONS[code]
+    elif code in RAIN_CODES:
+        icon = '\U0001f327️'   # 🌧️
+    elif code in SNOW_CODES:
+        icon = '\U0001f328️'   # 🌨️
+    else:
+        icon = '\U0001f321️'   # 🌡️
+
+    print(json.dumps({
+        'text': f'{icon} {temp}/{high}°F',
+        'tooltip': desc,
+    }))
+
+except Exception:
+    print('{"text": "?"}')
