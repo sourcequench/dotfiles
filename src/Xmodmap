@@ -1,5 +1,4 @@
 keycode 206 = Control_L NoSymbol Control_L
-remove mod4 = Super_L
-remove mod4 = Super_R
+clear mod4
 add mod1 = Alt_L
 add mod1 = Alt_R
