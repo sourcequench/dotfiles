@@ -19,6 +19,13 @@
           - unattended-upgrades
         state: present
 
+    - name: Refresh GitHub CLI apt keyring
+      get_url:
+        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        mode: '0644'
+        force: yes
+
     - name: Add Signal Desktop apt key
       get_url:
         url: https://updates.signal.org/desktop/apt/keys.asc
@@ -64,9 +71,13 @@
         mode: '0644'
 
     - name: Update apt cache
-      apt:
-        update_cache: yes
-      ignore_errors: yes
+      shell: apt-get update
+      changed_when: false
+
+    - name: Remove legacy Signal apt list after update
+      file:
+        path: /etc/apt/sources.list.d/signal-xenial.list
+        state: absent
 
     - name: Install Signal and Helium
       apt:
