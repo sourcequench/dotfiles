@@ -13,4 +13,5 @@ case "$device_type" in
     *) exit 0 ;;
 esac
 
+setxkbmap -option altwin:ctrl_win
 [ -f "$HOME/.Xmodmap" ] && xmodmap "$HOME/.Xmodmap"
