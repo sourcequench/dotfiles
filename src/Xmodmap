@@ -1,4 +1,6 @@
+keycode 133 = Control_L NoSymbol Control_L
 keycode 206 = Control_L NoSymbol Control_L
 clear mod4
+add control = Control_L
 add mod1 = Alt_L
 add mod1 = Alt_R
