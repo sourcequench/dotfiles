@@ -1,0 +1,30 @@
+#!/bin/sh
+# Outputs the label for a single pane border.
+# Args: pane_pid  pane_current_command  pane_active(0|1)
+pane_pid=${1:-}
+pane_cmd=${2:-}
+active=${3:-0}
+
+agent=''
+color='colour250'
+if [ -n "$pane_pid" ]; then
+    args=$(ps --ppid "$pane_pid" -o args= 2>/dev/null | tr '\n' ' ')
+    combined="$args $pane_cmd"
+    case "$combined" in
+        *claude-code*|*@anthropic-ai/claude*) agent='✦ claude code'; color='colour208' ;;
+        *claude*)  agent='✦ claude';  color='colour208' ;;
+        *codex*)   agent='⬡ codex';   color='colour39'  ;;
+        *goose*)   agent='🪿 goose';  color='colour214' ;;
+        *gemini*)  agent='♊ gemini';  color='colour75'  ;;
+        *aider*)   agent='⚡ aider';  color='colour226' ;;
+        *cursor*)  agent='⬡ cursor';  color='colour39'  ;;
+    esac
+fi
+
+label=${agent:-$pane_cmd}
+
+if [ "$active" = 1 ]; then
+    printf '#[fg=%s,bold] %s #[nobold,default]' "$color" "$label"
+else
+    printf '#[fg=colour240] %s #[default]' "$label"
+fi
