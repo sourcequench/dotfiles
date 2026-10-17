@@ -1,0 +1,31 @@
+#!/bin/sh
+# Toggle the touchpad on/off and display a notification.
+if [ -n "$WAYLAND_DISPLAY" ]; then
+    current=$(swaymsg -t get_inputs 2>/dev/null | python3 -c "
+import json, sys
+inputs = json.load(sys.stdin)
+for d in inputs:
+    if d.get('type') == 'touchpad':
+        print(d.get('libinput', {}).get('send_events', ''))
+        break
+" 2>/dev/null)
+    if [ "$current" = "disabled" ]; then
+        swaymsg input type:touchpad events enabled
+        dunstify -u low -t 2000 'Touchpad' 'Enabled'
+    else
+        swaymsg input type:touchpad events disabled
+        dunstify -u low -t 2000 'Touchpad' 'Disabled'
+    fi
+else
+    id=$(xinput list --id-only 'pointer:*ouchpad' 2>/dev/null | head -1)
+    [ -z "$id" ] && id=$(xinput list --id-only 'pointer:*rackpad' 2>/dev/null | head -1)
+    [ -z "$id" ] && { dunstify -u low 'Touchpad' 'Not found'; exit 1; }
+    state=$(xinput list-props "$id" | awk '/Device Enabled/{print $NF}')
+    if [ "$state" = 1 ]; then
+        xinput disable "$id"
+        dunstify -u low -t 2000 'Touchpad' 'Disabled'
+    else
+        xinput enable "$id"
+        dunstify -u low -t 2000 'Touchpad' 'Enabled'
+    fi
+fi
