@@ -3,7 +3,7 @@
     "position": "bottom",
     "modules-left": ["sway/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery", "tray"],
+    "modules-right": ["custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true
@@ -44,15 +44,22 @@
         "path": "/"
     },
 
-    "battery": {
-        "format": "Bat: {status} {capacity}% {time}",
-        "format-charging": "Bat: charging {capacity}%",
-        "format-full": "Bat: full",
-        "format-not-charging": "Bat: {capacity}%",
-        "states": {
-            "warning": 30,
-            "critical": 15
-        }
+    "battery#bat0": {
+        "bat": "BAT0",
+        "format": "Bat0: {status} {capacity}% {time}",
+        "format-charging": "Bat0: ↑{capacity}%",
+        "format-full": "Bat0: full",
+        "format-not-charging": "Bat0: {capacity}%",
+        "states": { "warning": 30, "critical": 15 }
+    },
+
+    "battery#bat1": {
+        "bat": "BAT1",
+        "format": "Bat1: {status} {capacity}% {time}",
+        "format-charging": "Bat1: ↑{capacity}%",
+        "format-full": "Bat1: full",
+        "format-not-charging": "Bat1: {capacity}%",
+        "states": { "warning": 30, "critical": 15 }
     },
 
     "tray": {
