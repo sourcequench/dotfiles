@@ -13,6 +13,7 @@ check dunst
 check i3status
 check wpctl
 check brightnessctl
+check gsettings
 check inputplug
 check nm-applet
 check blueman-applet

@@ -33,11 +33,12 @@ systemctl --user daemon-reload
 systemctl --user enable --now personal-dotfiles-update.timer
 ```
 
-It checks GitHub weekly and, when the checkout advances, reapplies the Sway
-configuration. It does not install packages or restart Sway. Managed files are
-backed up by the normal installer before replacement. The timer runs while your
-user session is active and catches up after a missed scheduled run. Check its
-next run with `systemctl --user list-timers`; inspect the last run with
+It checks GitHub weekly and, when the checkout advances, reapplies the desktop
+configuration. It does not install packages or restart Sway. It reloads a
+running Waybar so bar configuration changes take effect immediately. Managed
+files are backed up by the normal installer before replacement. The timer runs
+while your user session is active and catches up after a missed scheduled run.
+Check its next run with `systemctl --user list-timers`; inspect the last run with
 `journalctl --user -u personal-dotfiles-update.service`.
 
 `check` reports missing commands, installable Debian packages, and package
@@ -59,8 +60,9 @@ writing configuration. It does not use sudo for the config files. To preview
 the package names it would install, use `./install --wm sway
 --install-packages --dry-run`.
 
-The configuration is not activated until the next Sway session. Log out and
-back in to Sway after installation. Existing config files are copied to the
+Window manager configuration is not activated until the next Sway session.
+Log out and back in to Sway after installation. Waybar configuration is
+reloaded during installation. Existing config files are copied to the
 timestamped directory printed by the installer under
 `~/.local/state/personal-dotfiles/backup-*`. Restore the previous Sway config
 from there if you need to roll back.
@@ -86,6 +88,8 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
   desktops and VMs without batteries.
 - Sway uses swayidle/swaylock and grim/slurp/wl-clipboard. i3 uses
   xss-lock/i3lock and maim/xclip.
+- The desktop advertises a dark color-scheme preference through XDG portals
+  and requests dark theme variants from GTK 3 and GTK 4 applications.
 - Gemini and Goose remain in the shared status line as labels; tmux does not
   invoke either CLI. Optional host-specific tmux settings can go in `work.conf`
   or `local.conf`.
