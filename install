@@ -30,7 +30,7 @@ fi
 os_id=$(sed -n 's/^ID=//p' /etc/os-release | head -n 1 | tr -d '"')
 codename=$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | head -n 1 | tr -d '"')
 [ "$os_id" = debian ] || { echo "Expected Debian (ID=debian), got $os_id." >&2; exit 1; }
-base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libglib2.0-bin libnotify-bin network-manager-applet blueman fortune-mod'
+base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libglib2.0-bin libnotify-bin network-manager-applet blueman python3'
 i3pkgs='i3-wm i3lock suckless-tools picom dex xss-lock maim xclip xinput x11-xkb-utils x11-xserver-utils inputplug'
 swaypkgs='sway swayidle swaylock xwayland grim slurp wl-clipboard waybar xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-wlr wdisplays'
 pkgs="$base $i3pkgs $swaypkgs"
@@ -106,7 +106,7 @@ install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-hel
 install -m 0755 "$source_dir/bin/personal-weather" "$HOME/.local/bin/personal-weather"
 install -m 0755 "$source_dir/bin/personal-tmux-status" "$HOME/.local/bin/personal-tmux-status"
 install -m 0755 "$source_dir/bin/personal-tmux-pane" "$HOME/.local/bin/personal-tmux-pane"
-install -m 0755 "$source_dir/bin/personal-tmux-fortune" "$HOME/.local/bin/personal-tmux-fortune"
+install -m 0755 "$source_dir/bin/personal-tmux-news" "$HOME/.local/bin/personal-tmux-news"
 install -m 0755 "$source_dir/bin/personal-touchpad-toggle" "$HOME/.local/bin/personal-touchpad-toggle"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"
@@ -134,4 +134,5 @@ if gsettings list-keys org.gnome.desktop.interface 2>/dev/null | grep -qx color-
     gsettings set org.gnome.desktop.interface color-scheme "'prefer-dark'"
 fi
 pkill -USR2 -x waybar 2>/dev/null || true
+tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
 echo 'Install complete. Log out and select the configured session to use it.'

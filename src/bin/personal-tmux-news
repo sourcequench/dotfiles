@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Print a cached BBC News headline and refresh it outside tmux's redraw path."""
+
+import html
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+import urllib.request
+import xml.etree.ElementTree as ET
+
+
+FEED_URL = "https://feeds.bbci.co.uk/news/rss.xml"
+REFRESH_SECONDS = 30 * 60
+LOCK_SECONDS = 60
+MAX_TITLE_LENGTH = 88
+
+cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+cache_dir = cache_root / "personal-dotfiles"
+cache_file = cache_dir / "tmux-news.json"
+lock_file = cache_dir / "tmux-news.lock"
+
+
+def read_cache():
+    try:
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def shorten(text):
+    text = " ".join(html.unescape(text).split())
+    if len(text) <= MAX_TITLE_LENGTH:
+        return text
+    shortened = text[: MAX_TITLE_LENGTH - 1].rsplit(" ", 1)[0]
+    return f"{shortened}…"
+
+
+def refresh():
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if lock_file.exists() and time.time() - lock_file.stat().st_mtime > LOCK_SECONDS:
+            lock_file.unlink()
+        lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(lock_fd)
+    except (FileExistsError, OSError):
+        return
+
+    data = read_cache()
+    data["attempted"] = int(time.time())
+    try:
+        request = urllib.request.Request(FEED_URL, headers={"User-Agent": "personal-tmux-news/1.0"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            root = ET.fromstring(response.read())
+        item = root.find("./channel/item")
+        if item is None:
+            raise ValueError("feed contains no items")
+        title = item.findtext("title", "").strip()
+        if not title:
+            raise ValueError("headline is empty")
+        data["title"] = title
+        data["link"] = item.findtext("link", "").strip()
+        data["updated"] = int(time.time())
+    except (OSError, ValueError, ET.ParseError):
+        pass
+
+    try:
+        temporary = cache_file.with_suffix(".tmp")
+        temporary.write_text(json.dumps(data), encoding="utf-8")
+        os.replace(temporary, cache_file)
+    except OSError:
+        pass
+    finally:
+        try:
+            lock_file.unlink()
+        except OSError:
+            pass
+
+
+def start_refresh():
+    subprocess.Popen(
+        [sys.executable, __file__, "--refresh"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--refresh"]:
+        refresh()
+        raise SystemExit
+
+    cached = read_cache()
+    attempted = cached.get("attempted", cached.get("updated", 0))
+    if time.time() - attempted >= REFRESH_SECONDS:
+        start_refresh()
+
+    title = cached.get("title")
+    if title:
+        # A literal # must be doubled so tmux does not parse feed text as formatting.
+        print(f"BBC: {shorten(title)}".replace("#", "##"), end="")
+    else:
+        print("BBC: loading news...", end="")

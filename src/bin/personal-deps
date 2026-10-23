@@ -8,6 +8,7 @@ check() {
     fi
 }
 check tmux
+check python3
 check kitty
 check dunst
 check i3status
