@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print a cached BBC News headline and refresh it outside tmux's redraw path."""
+"""Print a cached Hacker News headline and refresh it outside tmux's redraw path."""
 
 import html
 import json
@@ -9,10 +9,10 @@ import subprocess
 import sys
 import time
 import urllib.request
-import xml.etree.ElementTree as ET
 
 
-FEED_URL = "https://feeds.bbci.co.uk/news/rss.xml"
+SOURCE = "hacker-news"
+API_ROOT = "https://hacker-news.firebaseio.com/v0"
 REFRESH_SECONDS = 30 * 60
 LOCK_SECONDS = 60
 MAX_TITLE_LENGTH = 88
@@ -49,21 +49,36 @@ def refresh():
         return
 
     data = read_cache()
+    if data.get("source") != SOURCE:
+        data = {}
+    data["source"] = SOURCE
     data["attempted"] = int(time.time())
     try:
-        request = urllib.request.Request(FEED_URL, headers={"User-Agent": "personal-tmux-news/1.0"})
+        request = urllib.request.Request(
+            f"{API_ROOT}/topstories.json",
+            headers={"User-Agent": "personal-tmux-news/1.0"},
+        )
         with urllib.request.urlopen(request, timeout=10) as response:
-            root = ET.fromstring(response.read())
-        item = root.find("./channel/item")
-        if item is None:
-            raise ValueError("feed contains no items")
-        title = item.findtext("title", "").strip()
+            story_ids = json.load(response)
+        if not isinstance(story_ids, list) or not story_ids:
+            raise ValueError("top stories response is empty")
+        story_id = int(story_ids[0])
+
+        request = urllib.request.Request(
+            f"{API_ROOT}/item/{story_id}.json",
+            headers={"User-Agent": "personal-tmux-news/1.0"},
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            item = json.load(response)
+        if not isinstance(item, dict):
+            raise ValueError("story response is invalid")
+        title = item.get("title", "").strip()
         if not title:
             raise ValueError("headline is empty")
         data["title"] = title
-        data["link"] = item.findtext("link", "").strip()
+        data["link"] = f"https://news.ycombinator.com/item?id={story_id}"
         data["updated"] = int(time.time())
-    except (OSError, ValueError, ET.ParseError):
+    except (IndexError, KeyError, OSError, TypeError, ValueError):
         pass
 
     try:
@@ -96,6 +111,8 @@ if __name__ == "__main__":
         raise SystemExit
 
     cached = read_cache()
+    if cached.get("source") != SOURCE:
+        cached = {}
     attempted = cached.get("attempted", cached.get("updated", 0))
     if time.time() - attempted >= REFRESH_SECONDS:
         start_refresh()
@@ -103,6 +120,6 @@ if __name__ == "__main__":
     title = cached.get("title")
     if title:
         # A literal # must be doubled so tmux does not parse feed text as formatting.
-        print(f"BBC: {shorten(title)}".replace("#", "##"), end="")
+        print(f"HN: {shorten(title)}".replace("#", "##"), end="")
     else:
-        print("BBC: loading news...", end="")
+        print("HN: loading news...", end="")

@@ -90,7 +90,7 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
   xss-lock/i3lock and maim/xclip.
 - The desktop advertises a dark color-scheme preference through XDG portals
   and requests dark theme variants from GTK 3 and GTK 4 applications.
-- The center of the tmux status line shows the latest BBC News headline. It
+- The center of the tmux status line shows the top Hacker News headline. It
   refreshes in the background every 30 minutes and retains the last successful
   headline while offline.
 - Gemini and Goose remain in the shared status line as labels; tmux does not
