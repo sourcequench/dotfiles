@@ -107,3 +107,12 @@ OS identity, and package availability without changing the machine.
 For setup and scheduled update instructions for externally managed machines,
 see [UNMANAGED-MACHINES.md](UNMANAGED-MACHINES.md).
 
+## Clipboard integration test
+
+Run `python3 tests/clipboard-e2e.py` to check the Kitty and tmux mouse workflow
+in an isolated Xvfb display. It uses the repository configs, selects a test
+string with a plain left drag, checks the X11 primary selection, then middle
+clicks into tmux and verifies the pasted text. It requires `xvfb-run`,
+`xwininfo`, Kitty, tmux, xclip, Python 3, and libXtst. The test does not touch
+the desktop clipboard.
+
