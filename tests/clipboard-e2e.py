@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise Kitty primary selection and middle-click paste inside tmux under Xvfb."""
+"""Test plain mouse selection and middle-click paste between Kitty and tmux."""
 
 import ctypes
 import ctypes.util
@@ -15,7 +15,8 @@ import time
 
 
 REPO = Path(__file__).resolve().parents[1]
-TOKEN = "PRIMARY_E2E_TOKEN_7F3A"
+TMUX_TOKEN = "TMUX_TO_KITTY_PRIMARY_7F3A"
+KITTY_TOKEN = "KITTY_TO_TMUX_PRIMARY_9B2C"
 
 
 def run(command, **kwargs):
@@ -23,38 +24,167 @@ def run(command, **kwargs):
 
 
 def under_xvfb():
-    command = ["xvfb-run", "-a", sys.executable, str(Path(__file__).resolve()), "--inside-xvfb"]
+    command = ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24",
+               sys.executable, str(Path(__file__).resolve()), "--inside-xvfb"]
     subprocess.run(command, check=True)
 
 
-def x11_mouse():
-    x11 = ctypes.CDLL(ctypes.util.find_library("X11"))
-    xtst_name = ctypes.util.find_library("Xtst")
-    if not xtst_name:
-        raise RuntimeError("libXtst is required for mouse input")
-    xtst = ctypes.CDLL(xtst_name)
-    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
-    x11.XOpenDisplay.restype = ctypes.c_void_p
-    x11.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    display = x11.XOpenDisplay(None)
-    if not display:
-        raise RuntimeError("could not connect to the Xvfb display")
-    xtst.XTestFakeMotionEvent.argtypes = [
-        ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong
-    ]
-    xtst.XTestFakeButtonEvent.argtypes = [
-        ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong
-    ]
+class X11Mouse:
+    def __init__(self):
+        x11_name = ctypes.util.find_library("X11")
+        xtst_name = ctypes.util.find_library("Xtst")
+        if not x11_name or not xtst_name:
+            raise RuntimeError("libX11 and libXtst are required for mouse input")
+        self.x11 = ctypes.CDLL(x11_name)
+        self.xtst = ctypes.CDLL(xtst_name)
+        self.x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+        self.x11.XOpenDisplay.restype = ctypes.c_void_p
+        self.x11.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self.x11.XMoveWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong,
+                                         ctypes.c_int, ctypes.c_int]
+        self.x11.XMapRaised.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        self.x11.XSetInputFocus.argtypes = [ctypes.c_void_p, ctypes.c_ulong,
+                                           ctypes.c_int, ctypes.c_ulong]
+        self.display = self.x11.XOpenDisplay(None)
+        if not self.display:
+            raise RuntimeError("could not connect to the Xvfb display")
+        self.xtst.XTestFakeMotionEvent.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong
+        ]
+        self.xtst.XTestFakeButtonEvent.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong
+        ]
 
-    def move(x, y):
-        xtst.XTestFakeMotionEvent(display, -1, x, y, 0)
-        x11.XSync(display, 0)
+    def move(self, x, y):
+        self.xtst.XTestFakeMotionEvent(self.display, -1, x, y, 0)
+        self.x11.XSync(self.display, 0)
 
-    def button(number, pressed):
-        xtst.XTestFakeButtonEvent(display, number, int(pressed), 0)
-        x11.XSync(display, 0)
+    def button(self, number, pressed):
+        self.xtst.XTestFakeButtonEvent(self.display, number, int(pressed), 0)
+        self.x11.XSync(self.display, 0)
 
-    return move, button
+    def click(self, window, number, x, y):
+        self.focus(window)
+        self.move(x, y)
+        self.button(number, True)
+        time.sleep(0.12)
+        self.button(number, False)
+
+    def drag(self, window, start_x, end_x, y):
+        self.focus(window)
+        self.move(start_x, y)
+        self.button(1, True)
+        time.sleep(0.12)
+        self.move(end_x, y)
+        time.sleep(0.12)
+        self.button(1, False)
+        time.sleep(0.2)
+
+    def focus(self, window):
+        self.x11.XMapRaised(self.display, window)
+        self.x11.XSetInputFocus(self.display, window, 2, 0)
+        self.x11.XSync(self.display, 0)
+
+    def place(self, window, x, y):
+        self.x11.XMoveWindow(self.display, window, x, y)
+        self.x11.XMapRaised(self.display, window)
+        self.x11.XSync(self.display, 0)
+
+
+def start_kitty(config, socket, command, env):
+    process = subprocess.Popen(
+        ["kitty", "--config", str(config),
+         "--override", "allow_remote_control=yes",
+         "--override", "initial_window_width=90c",
+         "--override", "initial_window_height=24c",
+         "--listen-on", "unix:" + str(socket), *command],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    remote = ["kitty", "@", "--to", "unix:" + str(socket)]
+    for _ in range(80):
+        if process.poll() is not None:
+            raise RuntimeError("Kitty exited before opening its control socket")
+        try:
+            run(remote + ["ls"], env=env)
+            return process, remote
+        except subprocess.CalledProcessError:
+            time.sleep(0.125)
+    raise RuntimeError("Kitty control socket did not become ready")
+
+
+def screen_text(remote, env):
+    return subprocess.run(remote + ["get-text", "--extent", "screen"],
+                          check=False, text=True, capture_output=True, env=env).stdout
+
+
+def wait_for_row(remote, text, env):
+    screen = ""
+    for _ in range(80):
+        screen = screen_text(remote, env)
+        lines = screen.splitlines()
+        for row, line in enumerate(lines):
+            if line.strip() == text:
+                return row
+        time.sleep(0.125)
+    raise RuntimeError(f"could not find expected text in Kitty screen: {text}\n{screen}")
+
+
+def wait_for_prompt(remote, env):
+    prompt_pattern = re.compile(r"[$#]\s*$")
+    for _ in range(80):
+        lines = screen_text(remote, env).splitlines()
+        prompts = [i for i, line in enumerate(lines) if prompt_pattern.search(line)]
+        if prompts:
+            return prompts[-1]
+        time.sleep(0.125)
+    raise RuntimeError("could not find a shell prompt in Kitty screen")
+
+
+def kitty_geometry(remote, env):
+    listing = json.loads(run(remote + ["ls"], env=env).stdout)
+    window = listing[0]["tabs"][0]["windows"][0]
+    xid = listing[0]["platform_window_id"]
+    geometry = run(["xwininfo", "-id", "0x%x" % xid], env=env).stdout
+    values = dict(re.findall(r"(Absolute upper-left [XY]|Width|Height):\s+(\d+)", geometry))
+    columns = window["columns"]
+    lines = window["lines"]
+    return {
+        "id": xid,
+        "x": int(values["Absolute upper-left X"]),
+        "y": int(values["Absolute upper-left Y"]),
+        "cell_width": int(values["Width"]) // columns,
+        "cell_height": int(values["Height"]) // lines,
+    }
+
+
+def copy_line(mouse, geometry, row, text):
+    y = geometry["y"] + row * geometry["cell_height"] + geometry["cell_height"] // 2
+    start_x = geometry["x"]
+    end_x = start_x + len(text) * geometry["cell_width"] + geometry["cell_width"] // 2
+    mouse.drag(geometry["id"], start_x, end_x, y)
+
+
+def middle_paste(mouse, geometry, row):
+    y = geometry["y"] + row * geometry["cell_height"] + geometry["cell_height"] // 2
+    mouse.click(geometry["id"], 2, geometry["x"] + 15, y)
+
+
+def primary_text(env):
+    return subprocess.run(["xclip", "-o", "-selection", "primary"],
+                          check=False, text=True, capture_output=True,
+                          timeout=3, env=env).stdout
+
+
+def stop_process(process):
+    if process is None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        process.kill()
 
 
 def inside_xvfb():
@@ -66,11 +196,11 @@ def inside_xvfb():
     home = test_dir / "home"
     home.mkdir()
     tmux_socket = "clip-e2e-" + str(os.getpid())
-    kitty_socket = test_dir / "kitty.sock"
+    tmux_cmd = ["tmux", "-L", tmux_socket]
     child_env = os.environ.copy()
     child_env.update({"HOME": str(home), "LIBGL_ALWAYS_SOFTWARE": "1"})
-    tmux_cmd = ["tmux", "-L", tmux_socket]
-    kitty_process = None
+    tmux_kitty = None
+    naked_kitty = None
 
     try:
         run(tmux_cmd + ["-f", str(REPO / "src/tmux/common.conf"), "new-session",
@@ -79,101 +209,55 @@ def inside_xvfb():
         if mouse_mode != "off":
             raise RuntimeError(f"tmux mouse mode should be off, got {mouse_mode!r}")
 
-        attach = f"export TERM=xterm-kitty; exec tmux -L {tmux_socket} attach -t clip"
-        kitty_process = subprocess.Popen(
-            ["kitty", "--config", str(REPO / "src/kitty/kitty.conf"),
-             "--override", "allow_remote_control=yes",
-             "--override", "initial_window_width=90c",
-             "--override", "initial_window_height=24c",
-             "--listen-on", "unix:" + str(kitty_socket), "sh", "-lc", attach],
-            env=child_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        tmux_attach = f"export TERM=xterm-kitty; exec tmux -L {tmux_socket} attach -t clip"
+        tmux_kitty, tmux_remote = start_kitty(
+            REPO / "src/kitty/kitty.conf", test_dir / "kitty-tmux.sock",
+            ["sh", "-lc", tmux_attach], child_env)
+        naked_kitty, naked_remote = start_kitty(
+            REPO / "src/kitty/kitty.conf", test_dir / "kitty-naked.sock",
+            ["sh", "-lc", "exec bash --noprofile --norc -i"], child_env)
 
-        remote = ["kitty", "@", "--to", "unix:" + str(kitty_socket)]
-        for _ in range(80):
-            if kitty_process.poll() is not None:
-                raise RuntimeError("Kitty exited before opening its control socket")
-            try:
-                run(remote + ["ls"], env=child_env)
-                break
-            except subprocess.CalledProcessError:
-                time.sleep(0.125)
-        else:
-            raise RuntimeError("Kitty control socket did not become ready")
+        tmux_geometry = kitty_geometry(tmux_remote, child_env)
+        naked_geometry = kitty_geometry(naked_remote, child_env)
+        mouse = X11Mouse()
+        mouse.place(naked_geometry["id"], 900, 0)
+        naked_geometry = kitty_geometry(naked_remote, child_env)
 
+        # Copy from the tmux pane with a plain drag, then middle-click into a naked Kitty shell.
         run(tmux_cmd + ["send-keys", "-t", "clip:0.0",
-                        "printf '%s\\n' '" + TOKEN + "'", "Enter"], env=child_env)
-        screen = ""
-        token_row = None
-        prompt_row = None
-        prompt_pattern = re.compile(r"[$#]\s*$")
-        for _ in range(80):
-            screen = subprocess.run(remote + ["get-text", "--extent", "screen"],
-                                    check=False, text=True, capture_output=True, env=child_env).stdout
-            lines = screen.splitlines()
-            token_row = next((i for i, line in enumerate(lines) if line.strip() == TOKEN), None)
-            prompts = [i for i, line in enumerate(lines) if prompt_pattern.search(line)]
-            prompt_row = prompts[-1] if prompts else None
-            if token_row is not None and prompt_row is not None:
-                break
-            time.sleep(0.125)
-        else:
-            raise RuntimeError("could not locate the printed token and shell prompt")
-
-        listing = json.loads(run(remote + ["ls"], env=child_env).stdout)
-        window = listing[0]["tabs"][0]["windows"][0]
-        columns = window["columns"]
-        lines = window["lines"]
-        if columns < len(TOKEN) + 2:
-            raise RuntimeError("Kitty test window is too narrow")
-        xid = "0x%x" % listing[0]["platform_window_id"]
-        geometry = run(["xwininfo", "-id", xid], env=child_env).stdout
-        values = dict(re.findall(r"(Absolute upper-left [XY]|Width|Height):\s+(\d+)", geometry))
-        origin_x = int(values["Absolute upper-left X"])
-        origin_y = int(values["Absolute upper-left Y"])
-        pixel_width = int(values["Width"])
-        pixel_height = int(values["Height"])
-        cell_width = pixel_width // columns
-        cell_height = pixel_height // lines
-        select_y = origin_y + token_row * cell_height + cell_height // 2
-        prompt_y = origin_y + prompt_row * cell_height + cell_height // 2
-        select_end_x = origin_x + len(TOKEN) * cell_width + cell_width // 2
-
-        move, button = x11_mouse()
-        move(origin_x, select_y)
-        button(1, True)
-        time.sleep(0.15)
-        move(select_end_x, select_y)
-        time.sleep(0.15)
-        button(1, False)
+                        "printf '%s\\n' '" + TMUX_TOKEN + "'", "Enter"], env=child_env)
+        tmux_row = wait_for_row(tmux_remote, TMUX_TOKEN, child_env)
+        tmux_prompt = wait_for_prompt(tmux_remote, child_env)
+        copy_line(mouse, tmux_geometry, tmux_row, TMUX_TOKEN)
+        if primary_text(child_env) != TMUX_TOKEN:
+            raise RuntimeError("plain drag in tmux did not copy the full PRIMARY selection")
+        middle_paste(mouse, naked_geometry, 1)
         time.sleep(0.25)
+        if TMUX_TOKEN not in screen_text(naked_remote, child_env):
+            raise RuntimeError("middle-click did not paste tmux text into naked Kitty")
+        run(tmux_cmd + ["send-keys", "-t", "clip:0.0", "C-c"], env=child_env)
+        print("PASS: plain drag copied from tmux and middle-click pasted into naked Kitty")
 
-        primary = subprocess.run(["xclip", "-o", "-selection", "primary"],
-                                 check=False, text=True, capture_output=True,
-                                 timeout=3, env=child_env).stdout
-        if primary != TOKEN:
-            raise RuntimeError(f"left-drag PRIMARY was {primary!r}, expected {TOKEN!r}")
-
-        move(origin_x + 15, prompt_y)
-        button(2, True)
-        time.sleep(0.15)
-        button(2, False)
-        time.sleep(0.35)
-        pane = run(tmux_cmd + ["capture-pane", "-t", "clip:0.0", "-p"], env=child_env).stdout
-        if TOKEN not in pane:
-            raise RuntimeError("middle-click did not paste the PRIMARY text into tmux")
-
-        print("PASS: plain left-drag selected the full PRIMARY string")
-        print("PASS: middle-click pasted it into the tmux prompt")
+        # Copy from the naked Kitty shell and middle-click back into the tmux prompt.
+        run(naked_remote + ["send-text", "\x03"], env=child_env)
+        naked_command = "echo " + KITTY_TOKEN + "\r"
+        run(naked_remote + ["send-text", naked_command], env=child_env)
+        naked_row = wait_for_row(naked_remote, KITTY_TOKEN, child_env)
+        copy_line(mouse, naked_geometry, naked_row, KITTY_TOKEN)
+        if primary_text(child_env) != KITTY_TOKEN:
+            raise RuntimeError("plain drag in naked Kitty did not copy the full PRIMARY selection")
+        middle_paste(mouse, tmux_geometry, tmux_prompt)
+        for _ in range(20):
+            pane = run(tmux_cmd + ["capture-pane", "-t", "clip:0.0", "-p"], env=child_env).stdout
+            if KITTY_TOKEN in pane:
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError("middle-click did not paste naked Kitty text into tmux")
+        print("PASS: plain drag copied from naked Kitty and middle-click pasted into tmux")
     finally:
-        if kitty_process is not None:
-            kitty_process.terminate()
-            try:
-                kitty_process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                kitty_process.kill()
+        stop_process(naked_kitty)
+        stop_process(tmux_kitty)
         subprocess.run(tmux_cmd + ["kill-server"], check=False, capture_output=True, env=child_env)
         shutil.rmtree(test_dir)
 

@@ -110,9 +110,9 @@ see [UNMANAGED-MACHINES.md](UNMANAGED-MACHINES.md).
 ## Clipboard integration test
 
 Run `python3 tests/clipboard-e2e.py` to check the Kitty and tmux mouse workflow
-in an isolated Xvfb display. It uses the repository configs, selects a test
-string with a plain left drag, checks the X11 primary selection, then middle
-clicks into tmux and verifies the pasted text. It requires `xvfb-run`,
-`xwininfo`, Kitty, tmux, xclip, Python 3, and libXtst. The test does not touch
-the desktop clipboard.
+in an isolated Xvfb display. It uses the repository configs and two Kitty
+windows, one attached to tmux and one running a shell. It checks plain
+left-drag selection and middle-click paste in both directions. It requires
+`xvfb-run`, `xwininfo`, Kitty, tmux, xclip, Python 3, and libXtst. The test
+does not touch the desktop clipboard.
 
