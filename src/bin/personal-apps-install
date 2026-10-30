@@ -1,11 +1,71 @@
 #!/bin/sh
 # Install signal-desktop and helium on machines where apt repos cannot be added.
 # If the packages are already managed by apt, this script skips them.
-# Stores the last-installed URL in ~/.local/state/personal-apps/ for update detection.
+# Stores the installed package version in ~/.local/state/personal-apps/.
 set -eu
 
 state_dir="$HOME/.local/state/personal-apps"
 mkdir -p "$state_dir" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/bin"
+work_dir=$(mktemp -d)
+trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
+
+package_metadata() {
+    gzip -dc "$1" | awk -v wanted="$2" '
+        BEGIN { RS = ""; FS = "\n" }
+        $1 == "Package: " wanted {
+            version = ""
+            filename = ""
+            for (i = 1; i <= NF; i++) {
+                if ($i ~ /^Version: /) {
+                    version = $i
+                    sub(/^Version: /, "", version)
+                }
+                if ($i ~ /^Filename: /) {
+                    filename = $i
+                    sub(/^Filename: /, "", filename)
+                }
+            }
+            if (version != "" && filename != "") {
+                print version
+                print filename
+                exit
+            }
+        }
+    '
+}
+
+package_is_current() {
+    payload=$1
+    version_file=$2
+    legacy_url_file=$3
+    latest_version=$4
+    latest_url=$5
+
+    [ -x "$payload" ] || return 1
+    if [ -r "$version_file" ] && \
+            dpkg --compare-versions "$(cat "$version_file")" ge "$latest_version"; then
+        return 0
+    fi
+    if [ -r "$legacy_url_file" ] && [ "$(cat "$legacy_url_file")" = "$latest_url" ]; then
+        printf '%s\n' "$latest_version" > "$version_file"
+        return 0
+    fi
+    return 1
+}
+
+configure_signal() {
+    ln -sf "$HOME/bin/opt/Signal/signal-desktop" "$HOME/.local/bin/signal-desktop"
+    for f in "$HOME/bin/opt/Signal/"*.desktop \
+              "$HOME/bin/usr/share/applications/signal-desktop.desktop"; do
+        [ -f "$f" ] && cp "$f" "$HOME/.local/share/applications/signal-desktop.desktop" && break
+    done
+}
+
+configure_helium() {
+    ln -sf "$HOME/bin/opt/helium/helium-wrapper" "$HOME/.local/bin/helium"
+    desktop_src="$HOME/bin/opt/helium/helium.desktop"
+    [ -f "$desktop_src" ] && cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
+}
 
 install_signal() {
     # Only skip if our apt repo is configured — dpkg status alone is unreliable
@@ -14,28 +74,26 @@ install_signal() {
        [ -f /etc/apt/sources.list.d/signal-xenial.list ]; then
         return 0
     fi
-    latest_url=$(curl -fsSL \
-        'https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages.gz' \
-        | zcat | grep '^Filename:' \
-        | sed 's_Filename: _https://updates.signal.org/desktop/apt/_' \
-        | grep -v beta | head -1)
-    [ -n "$latest_url" ] || { echo 'personal-apps-install: cannot determine Signal URL' >&2; return 1; }
-    state_file="$state_dir/signal-url"
-    if [ -x "$HOME/.local/bin/signal-desktop" ] && [ -f "$state_file" ] \
-            && [ "$(cat "$state_file")" = "$latest_url" ]; then
+    index="$work_dir/signal-packages.gz"
+    curl -fsSL -o "$index" \
+        'https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages.gz'
+    metadata=$(package_metadata "$index" signal-desktop)
+    latest_version=$(printf '%s\n' "$metadata" | sed -n '1p')
+    filename=$(printf '%s\n' "$metadata" | sed -n '2p')
+    [ -n "$latest_version" ] && [ -n "$filename" ] || \
+        { echo 'personal-apps-install: cannot determine Signal version' >&2; return 1; }
+    latest_url="https://updates.signal.org/desktop/apt/$filename"
+    version_file="$state_dir/signal-version"
+    if package_is_current "$HOME/bin/opt/Signal/signal-desktop" "$version_file" \
+            "$state_dir/signal-url" "$latest_version" "$latest_url"; then
+        configure_signal
         return 0
     fi
-    printf 'Installing Signal from %s\n' "$latest_url"
-    tmp=$(mktemp -d)
-    trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-    curl -fsSL -o "$tmp/signal.deb" "$latest_url"
-    dpkg-deb -x "$tmp/signal.deb" "$HOME/bin"
-    ln -sf "$HOME/bin/opt/Signal/signal-desktop" "$HOME/.local/bin/signal-desktop"
-    for f in "$HOME/bin/opt/Signal/"*.desktop \
-              "$HOME/bin/usr/share/applications/signal-desktop.desktop"; do
-        [ -f "$f" ] && cp "$f" "$HOME/.local/share/applications/signal-desktop.desktop" && break
-    done
-    printf '%s\n' "$latest_url" > "$state_file"
+    printf 'Installing Signal %s from %s\n' "$latest_version" "$latest_url"
+    curl -fsSL -o "$work_dir/signal.deb" "$latest_url"
+    dpkg-deb -x "$work_dir/signal.deb" "$HOME/bin"
+    configure_signal
+    printf '%s\n' "$latest_version" > "$version_file"
     echo 'Signal installed.'
 }
 
@@ -43,25 +101,26 @@ install_helium() {
     if [ -f /etc/apt/sources.list.d/helium.sources ]; then
         return 0
     fi
-    filename=$(curl -fsSL \
-        'https://pkg.helium.computer/deb/dists/stable/main/binary-amd64/Packages.gz' \
-        | zcat | grep '^Filename:' | head -1 | sed 's/^Filename: //')
-    [ -n "$filename" ] || { echo 'personal-apps-install: cannot determine Helium URL' >&2; return 1; }
+    index="$work_dir/helium-packages.gz"
+    curl -fsSL -o "$index" \
+        'https://pkg.helium.computer/deb/dists/stable/main/binary-amd64/Packages.gz'
+    metadata=$(package_metadata "$index" helium-bin)
+    latest_version=$(printf '%s\n' "$metadata" | sed -n '1p')
+    filename=$(printf '%s\n' "$metadata" | sed -n '2p')
+    [ -n "$latest_version" ] && [ -n "$filename" ] || \
+        { echo 'personal-apps-install: cannot determine Helium version' >&2; return 1; }
     latest_url="https://pkg.helium.computer/deb/$filename"
-    state_file="$state_dir/helium-url"
-    if [ -x "$HOME/.local/bin/helium" ] && [ -f "$state_file" ] \
-            && [ "$(cat "$state_file")" = "$latest_url" ]; then
+    version_file="$state_dir/helium-version"
+    if package_is_current "$HOME/bin/opt/helium/helium-wrapper" "$version_file" \
+            "$state_dir/helium-url" "$latest_version" "$latest_url"; then
+        configure_helium
         return 0
     fi
-    printf 'Installing Helium from %s\n' "$latest_url"
-    tmp=$(mktemp -d)
-    trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-    curl -fsSL -o "$tmp/helium.deb" "$latest_url"
-    dpkg-deb -x "$tmp/helium.deb" "$HOME/bin"
-    ln -sf "$HOME/bin/opt/helium/helium-wrapper" "$HOME/.local/bin/helium"
-    desktop_src="$HOME/bin/opt/helium/helium.desktop"
-    [ -f "$desktop_src" ] && cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
-    printf '%s\n' "$latest_url" > "$state_file"
+    printf 'Installing Helium %s from %s\n' "$latest_version" "$latest_url"
+    curl -fsSL -o "$work_dir/helium.deb" "$latest_url"
+    dpkg-deb -x "$work_dir/helium.deb" "$HOME/bin"
+    configure_helium
+    printf '%s\n' "$latest_version" > "$version_file"
     echo 'Helium installed.'
 }
 
