@@ -109,7 +109,7 @@ install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-hel
 install -m 0755 "$source_dir/bin/personal-weather" "$HOME/.local/bin/personal-weather"
 install -m 0755 "$source_dir/bin/personal-tmux-status" "$HOME/.local/bin/personal-tmux-status"
 install -m 0755 "$source_dir/bin/personal-tmux-pane" "$HOME/.local/bin/personal-tmux-pane"
-install -m 0755 "$source_dir/bin/personal-tmux-news" "$HOME/.local/bin/personal-tmux-news"
+install -m 0755 "$source_dir/bin/personal-tmux-discovery" "$HOME/.local/bin/personal-tmux-discovery"
 install -m 0755 "$source_dir/bin/personal-touchpad-toggle" "$HOME/.local/bin/personal-touchpad-toggle"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.service" "$HOME/.config/systemd/user/personal-dotfiles-update.service"
 install -m 0644 "$source_dir/systemd/user/personal-dotfiles-update.timer" "$HOME/.config/systemd/user/personal-dotfiles-update.timer"

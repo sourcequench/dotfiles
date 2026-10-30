@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""Show a cached, drillable discovery item in the tmux status line."""
+
+import datetime
+import html
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+RELEASES = (
+    ("Sway", "swaywm/sway"),
+    ("i3", "i3/i3"),
+    ("tmux", "tmux/tmux"),
+    ("Kitty", "kovidgoyal/kitty"),
+    ("Codex", "openai/codex"),
+    ("Helium", "imputnet/helium"),
+)
+GITHUB_API = "https://api.github.com"
+WIKIPEDIA_API = "https://en.wikipedia.org/api/rest_v1"
+REFRESH_SECONDS = 6 * 60 * 60
+RELEASE_DISPLAY_SECONDS = 3 * 24 * 60 * 60
+LOCK_SECONDS = 5 * 60
+MAX_TEXT_LENGTH = 96
+USER_AGENT = "personal-tmux-discovery/1.0"
+
+cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+cache_dir = cache_root / "personal-dotfiles"
+cache_file = cache_dir / "tmux-discovery.json"
+lock_file = cache_dir / "tmux-discovery.lock"
+
+
+def read_cache():
+    try:
+        data = json.loads(cache_file.read_text(encoding="utf-8"))
+        return data if data.get("schema") == 1 else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def write_cache(data):
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    temporary = cache_file.with_suffix(".tmp")
+    temporary.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    os.replace(temporary, cache_file)
+
+
+def fetch_json(url):
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json, application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        return json.load(response)
+
+
+def clean_text(text):
+    text = html.unescape(text)
+    text = re.sub(r"!\[[^]]*\]\([^)]*\)", "", text)
+    text = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"^[\s>*#`+\-]+", "", text)
+    text = re.sub(r"^[0-9a-f]{7,40}\s+", "", text, flags=re.IGNORECASE)
+    text = text.replace("`", "")
+    return " ".join(text.split()).strip(" .:-")
+
+
+def release_summary(body):
+    candidates = []
+    for raw_line in (body or "").splitlines():
+        line = clean_text(raw_line)
+        lower = line.lower()
+        if len(line) < 14 or any(
+            phrase in lower
+            for phrase in (
+                "full changelog",
+                "what's changed",
+                "new contributors",
+                "immutable release",
+                "compare changes",
+                "revision: bump",
+                "merge: update",
+            )
+        ):
+            continue
+        score = 0
+        if re.search(
+            r"\b(add|allow|change|enable|fix|improve|introduce|new|remove|support)\w*\b",
+            lower,
+        ):
+            score += 3
+        if 24 <= len(line) <= 130:
+            score += 2
+        if line.endswith((".", "!")):
+            score += 1
+        candidates.append((score, line))
+    if not candidates:
+        return ""
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def shorten(text, limit=MAX_TEXT_LENGTH):
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    shortened = text[: limit - 1].rsplit(" ", 1)[0]
+    return f"{shortened}…"
+
+
+def release_item(label, release):
+    version = clean_text(release.get("name") or release.get("tag_name") or "")
+    version = version or "update"
+    summary = release_summary(release.get("body", ""))
+    text = f"NEW {label} {version}"
+    if summary and summary.lower() != version.lower():
+        text += f": {summary}"
+    return {
+        "kind": "release",
+        "text": shorten(text),
+        "url": release.get("html_url", ""),
+        "published": release.get("published_at") or release.get("created_at") or "",
+    }
+
+
+def latest_release(label, repository):
+    try:
+        release = fetch_json(f"{GITHUB_API}/repos/{repository}/releases/latest")
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        tags = fetch_json(f"{GITHUB_API}/repos/{repository}/tags?per_page=1")
+        if not tags:
+            return None
+        tag = tags[0].get("name", "")
+        if not tag:
+            return None
+        release = {
+            "name": tag,
+            "tag_name": tag,
+            "body": "",
+            "html_url": (
+                f"https://github.com/{repository}/tree/"
+                f"{urllib.parse.quote(tag, safe='')}"
+            ),
+            "published_at": "",
+        }
+    return release_item(label, release) if release.get("html_url") else None
+
+
+def next_midnight(now):
+    today = datetime.datetime.fromtimestamp(now).astimezone()
+    tomorrow = today.date() + datetime.timedelta(days=1)
+    return datetime.datetime.combine(
+        tomorrow, datetime.time.min, tzinfo=today.tzinfo
+    ).timestamp()
+
+
+def wikipedia_item(now):
+    today = datetime.datetime.fromtimestamp(now).astimezone().date()
+    url = (
+        f"{WIKIPEDIA_API}/feed/onthisday/selected/"
+        f"{today.month:02d}/{today.day:02d}"
+    )
+    response = fetch_json(url)
+    events = response.get("selected", [])
+    if not events:
+        return None
+    event = events[today.toordinal() % len(events)]
+    year = event.get("year", "")
+    description = clean_text(event.get("text", ""))
+    pages = event.get("pages") or []
+    page_url = ""
+    if pages:
+        page_url = (
+            pages[0].get("content_urls", {}).get("desktop", {}).get("page", "")
+        )
+    text = f"TODAY {year}: {description}" if year else f"TODAY: {description}"
+    return {
+        "kind": "history",
+        "text": shorten(text),
+        "url": page_url,
+        "expires": int(next_midnight(now)),
+    }
+
+
+def acquire_lock():
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if lock_file.exists() and time.time() - lock_file.stat().st_mtime > LOCK_SECONDS:
+            lock_file.unlink()
+        lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(lock_fd)
+        return True
+    except (FileExistsError, OSError):
+        return False
+
+
+def refresh():
+    if not acquire_lock():
+        return
+    now = int(time.time())
+    data = read_cache()
+    data.setdefault("schema", 1)
+    data["attempted"] = now
+    seen = data.get("seen_releases", [])
+    seen_lookup = set(seen)
+    releases = []
+    try:
+        for label, repository in RELEASES:
+            try:
+                release = latest_release(label, repository)
+                if release:
+                    releases.append(release)
+            except (OSError, TypeError, ValueError):
+                continue
+
+        if not data.get("initialized"):
+            if releases:
+                newest = max(releases, key=lambda item: item["published"])
+                newest["expires"] = now + RELEASE_DISPLAY_SECONDS
+                data["current"] = newest
+            data["initialized"] = True
+            for item in releases:
+                if item["url"] not in seen_lookup:
+                    seen.append(item["url"])
+                    seen_lookup.add(item["url"])
+        else:
+            unseen = [item for item in releases if item["url"] not in seen_lookup]
+            if unseen:
+                newest = max(unseen, key=lambda item: item["published"])
+                newest["expires"] = now + RELEASE_DISPLAY_SECONDS
+                data["current"] = newest
+            for item in releases:
+                if item["url"] not in seen_lookup:
+                    seen.append(item["url"])
+                    seen_lookup.add(item["url"])
+
+        current = data.get("current") or {}
+        if not current or current.get("expires", 0) <= now:
+            try:
+                fact = wikipedia_item(now)
+                if fact:
+                    data["current"] = fact
+            except (OSError, TypeError, ValueError):
+                pass
+
+        data["seen_releases"] = seen[-100:]
+        write_cache(data)
+    finally:
+        try:
+            lock_file.unlink()
+        except OSError:
+            pass
+
+
+def start_refresh():
+    subprocess.Popen(
+        [sys.executable, __file__, "--refresh"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+
+
+def open_current():
+    item = read_cache().get("current") or {}
+    url = item.get("url")
+    if not url:
+        return 1
+    command = None
+    if shutil.which("xdg-open"):
+        command = ["xdg-open", url]
+    elif shutil.which("gio"):
+        command = ["gio", "open", url]
+    if not command:
+        return 1
+    subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+    return 0
+
+
+def display():
+    data = read_cache()
+    now = time.time()
+    current = data.get("current") or {}
+    attempted = data.get("attempted", 0)
+    if now - attempted >= REFRESH_SECONDS or current.get("expires", 0) <= now:
+        start_refresh()
+    text = current.get("text", "Discovering something interesting…")
+    print(text.replace("#", "##"), end="")
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--refresh"]:
+        refresh()
+    elif sys.argv[1:] == ["--open"]:
+        raise SystemExit(open_current())
+    elif not sys.argv[1:]:
+        display()
+    else:
+        raise SystemExit("usage: personal-tmux-discovery [--refresh|--open]")
