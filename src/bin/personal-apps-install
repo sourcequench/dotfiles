@@ -64,7 +64,11 @@ configure_signal() {
 configure_helium() {
     ln -sf "$HOME/bin/opt/helium/helium-wrapper" "$HOME/.local/bin/helium"
     desktop_src="$HOME/bin/opt/helium/helium.desktop"
-    [ -f "$desktop_src" ] && cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
+    if [ -f "$desktop_src" ]; then
+        cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
+        sed -i "s|^Exec=helium|Exec=$HOME/.local/bin/personal-helium|" \
+            "$HOME/.local/share/applications/helium.desktop"
+    fi
 }
 
 install_signal() {
