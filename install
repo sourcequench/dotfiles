@@ -107,11 +107,9 @@ install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/person
 install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-signal"
 install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
 helium_desktop="$HOME/.local/share/applications/helium.desktop"
-if [ ! -f "$helium_desktop" ] && [ -f /usr/share/applications/helium.desktop ]; then
+if [ -f "$helium_desktop" ] && [ -f /usr/share/applications/helium.desktop ] && \
+        grep -q "^Exec=$HOME/.local/bin/personal-helium" "$helium_desktop"; then
     install -m 0644 /usr/share/applications/helium.desktop "$helium_desktop"
-fi
-if [ -f "$helium_desktop" ]; then
-    sed -i "s|^Exec=helium|Exec=$HOME/.local/bin/personal-helium|" "$helium_desktop"
 fi
 install -m 0755 "$source_dir/bin/personal-weather" "$HOME/.local/bin/personal-weather"
 install -m 0755 "$source_dir/bin/personal-tmux-status" "$HOME/.local/bin/personal-tmux-status"
@@ -151,6 +149,9 @@ fi
 systemctl --user start xdg-desktop-portal xdg-desktop-portal-wlr 2>/dev/null || true
 if gsettings list-keys org.gnome.desktop.interface 2>/dev/null | grep -qx color-scheme; then
     gsettings set org.gnome.desktop.interface color-scheme "'prefer-dark'"
+fi
+if gsettings list-keys org.gnome.desktop.interface 2>/dev/null | grep -qx gtk-enable-primary-paste; then
+    gsettings set org.gnome.desktop.interface gtk-enable-primary-paste true
 fi
 pkill -USR2 -x waybar 2>/dev/null || true
 tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true

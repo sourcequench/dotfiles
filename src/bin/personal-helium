@@ -1,9 +1,9 @@
 #!/bin/sh
 if command -v helium >/dev/null 2>&1; then
-    exec helium --ozone-platform=x11 "$@"
+    exec helium "$@"
 fi
 if [ -x "$HOME/bin/opt/helium/helium-wrapper" ]; then
-    exec "$HOME/bin/opt/helium/helium-wrapper" --ozone-platform=x11 "$@"
+    exec "$HOME/bin/opt/helium/helium-wrapper" "$@"
 fi
 echo 'personal-helium: helium not found' >&2
 exit 1

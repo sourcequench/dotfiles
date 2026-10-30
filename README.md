@@ -95,6 +95,8 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
   xss-lock/i3lock and maim/xclip.
 - The desktop advertises a dark color-scheme preference through XDG portals
   and requests dark theme variants from GTK 3 and GTK 4 applications.
+- GTK primary selection paste is enabled so highlighted text can be pasted with
+  the middle mouse button in applications that honor the desktop preference.
 - The center of the tmux status line shows a cached discovery item. New releases
   of Sway, i3, tmux, Kitty, Codex, and Helium take priority; a curated daily
   historical item appears when no release is new. Press `Ctrl-a i` to open the
