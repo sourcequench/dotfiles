@@ -25,8 +25,8 @@ git pull --ff-only
 ./install --wm sway
 ```
 
-To avoid remembering updates, the installer also installs a user-level systemd
-timer. Enable it once with:
+To avoid remembering updates on a machine you control, the installer also
+installs a user-level systemd timer. Enable it once with:
 
 ```sh
 systemctl --user daemon-reload
@@ -40,6 +40,11 @@ files are backed up by the normal installer before replacement. The timer runs
 while your user session is active and catches up after a missed scheduled run.
 Check its next run with `systemctl --user list-timers`; inspect the last run with
 `journalctl --user -u personal-dotfiles-update.service`.
+
+For a machine that is externally managed, pass `--cron-updates` to `check` and
+`install`. This installs an hourly user crontab entry instead of enabling the
+systemd timer. See [UNMANAGED-MACHINES.md](UNMANAGED-MACHINES.md) for the full
+setup and verification commands.
 
 `check` reports missing commands, installable Debian packages, and package
 names unavailable from the laptop's configured apt sources. If packages are

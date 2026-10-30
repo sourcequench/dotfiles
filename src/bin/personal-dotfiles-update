@@ -17,6 +17,6 @@ if [ -r "$state_file" ] && [ "$(cat "$state_file")" = "$commit" ]; then
     exit 0
 fi
 
-"$repo/install"
+"$repo/install" "$@"
 mkdir -p "$state_dir"
 printf '%s\n' "$commit" > "$state_file"

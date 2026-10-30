@@ -3,15 +3,16 @@ set -eu
 action=install
 case "${1:-}" in
     check|packages|install) action=$1; shift ;;
-    -h|--help) echo 'Usage: ./install [check|packages|install] [--install-packages] [--dry-run]'; exit 0 ;;
+    -h|--help) echo 'Usage: ./install [check|packages|install] [--install-packages] [--cron-updates] [--dry-run]'; exit 0 ;;
 esac
-do_packages=0; dry_run=0; source_dir=
+do_packages=0; cron_updates=0; dry_run=0; source_dir=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --install-packages) do_packages=1; shift ;;
+        --cron-updates) cron_updates=1; shift ;;
         --dry-run) dry_run=1; shift ;;
         --source) source_dir=$2; shift 2 ;;
-        -h|--help) echo 'Usage: ./install [check|packages|install] [--install-packages] [--dry-run]'; exit 0 ;;
+        -h|--help) echo 'Usage: ./install [check|packages|install] [--install-packages] [--cron-updates] [--dry-run]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -34,8 +35,10 @@ base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libglib
 i3pkgs='i3-wm i3lock suckless-tools picom dex xss-lock maim xclip xinput x11-xkb-utils x11-xserver-utils inputplug'
 swaypkgs='sway swayidle swaylock xwayland grim slurp wl-clipboard waybar xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-wlr wdisplays'
 pkgs="$base $i3pkgs $swaypkgs"
+if [ "$cron_updates" -eq 1 ]; then pkgs="$pkgs cron"; fi
 missing=; unavailable=; commands_missing=
 commands='tmux kitty dunst i3status wpctl brightnessctl gsettings i3 xss-lock i3lock maim xclip dmenu_run inputplug sway swayidle swaylock grim slurp wl-copy'
+if [ "$cron_updates" -eq 1 ]; then commands="$commands crontab"; fi
 launcher_found=0
 for candidate in wmenu fuzzel tofi; do
     installed=$(dpkg-query -W -f='${db:Status-Status}' "$candidate" 2>/dev/null || true)
@@ -76,8 +79,8 @@ if [ -n "$missing" ]; then
 fi
 "$source_dir/bin/personal-deps" || { echo 'Missing required commands; configuration unchanged.' >&2; exit 1; }
 [ "$dry_run" -eq 0 ] || { echo 'Dry run complete.'; exit 0; }
-cfg="$HOME/.config/personal-dotfiles"; backup="$HOME/.local/state/personal-dotfiles/backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$cfg" "$HOME/.local/bin" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway" "$HOME/.config/dunst" "$HOME/.config/waybar" "$HOME/.config/xdg-desktop-portal" "$HOME/.config/systemd/user"
+cfg="$HOME/.config/personal-dotfiles"; state_dir="$HOME/.local/state/personal-dotfiles"; backup="$state_dir/backup-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$cfg" "$state_dir" "$HOME/.local/bin" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway" "$HOME/.config/dunst" "$HOME/.config/waybar" "$HOME/.config/xdg-desktop-portal" "$HOME/.config/systemd/user"
 for file in "$cfg/shared.conf" "$cfg/i3.conf" "$cfg/sway.conf" "$cfg/local-wm.conf" "$HOME/.tmux.conf" "$HOME/.Xmodmap" "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini" "$HOME/.config/kitty/kitty.conf" "$HOME/.config/dunst/dunstrc" "$HOME/.config/waybar/config" "$HOME/.config/waybar/style.css" "$HOME/.config/i3/config" "$HOME/.config/sway/config"; do
     if [ -e "$file" ]; then rel=${file#"$HOME/"}; mkdir -p "$backup/$(dirname "$rel")"; cp -a "$file" "$backup/$rel"; fi
 done
@@ -124,7 +127,16 @@ printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/c
 "$HOME/.local/bin/personal-apps-install" || true
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
-systemctl --user enable --now personal-dotfiles-update.timer 2>/dev/null || true
+if [ "$cron_updates" -eq 1 ]; then
+    cron_file=$(mktemp "${TMPDIR:-/tmp}/personal-dotfiles-cron.XXXXXX")
+    crontab -l 2>/dev/null | sed '/# personal-dotfiles-update$/d' > "$cron_file" || true
+    printf '17 * * * * "$HOME/.local/bin/personal-dotfiles-update" --cron-updates >> "$HOME/.local/state/personal-dotfiles/update.log" 2>&1 # personal-dotfiles-update\n' >> "$cron_file"
+    crontab "$cron_file"
+    rm -f "$cron_file"
+    systemctl --user disable --now personal-dotfiles-update.timer 2>/dev/null || true
+else
+    systemctl --user enable --now personal-dotfiles-update.timer 2>/dev/null || true
+fi
 if command -v ansible-playbook >/dev/null 2>&1; then
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user enable --now personal-ansible-update.timer 2>/dev/null || true

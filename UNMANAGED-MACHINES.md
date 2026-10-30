@@ -10,14 +10,15 @@ administrator must install them.
 ```sh
 git clone https://github.com/sourcequench/dotfiles.git ~/.local/share/personal-dotfiles
 cd ~/.local/share/personal-dotfiles
-./install check
-./install --install-packages
+./install check --cron-updates
+./install --install-packages --cron-updates
 ```
 
 If `check` reports unavailable packages, ask the administrator to install them,
 then rerun. The installer sets up both i3 and sway, installs Signal and Helium
-to `~/bin` (if the apt repos are not configured), and enables a weekly
-auto-update timer.
+to `~/bin` (if the apt repos are not configured), and installs an hourly cron
+job that pulls and reapplies dotfiles updates. Its output is written to
+`~/.local/state/personal-dotfiles/update.log`.
 
 Backups of replaced files are saved under
 `~/.local/state/personal-dotfiles/backup-*`.
@@ -36,15 +37,14 @@ dotfiles, runs install, and enables the update timer.
 ## Manual update
 
 ```sh
-cd ~/.local/share/personal-dotfiles && git pull && ./install
+cd ~/.local/share/personal-dotfiles && git pull --ff-only && ./install --cron-updates
 ```
 
 ## Useful checks
 
 ```sh
-systemctl --user list-timers
-systemctl --user status personal-dotfiles-update.timer
-journalctl --user -u personal-dotfiles-update.service
+crontab -l | grep personal-dotfiles-update
+tail ~/.local/state/personal-dotfiles/update.log
 ```
 
 After a config change, reload sway with `Alt+Shift+C` or i3 with `Alt+Shift+R`.
