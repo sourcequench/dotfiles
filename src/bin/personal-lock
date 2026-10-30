@@ -22,6 +22,7 @@ done
 
 if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
     exec swaylock \
+        --daemonize \
         --color 1a1a2e \
         --inside-color 1e1e2e88 \
         --ring-color 285577ff \

@@ -93,6 +93,8 @@ window manager. Add host-specific settings to `~/.config/personal-dotfiles/local
   desktops and VMs without batteries.
 - Sway uses swayidle/swaylock and grim/slurp/wl-clipboard. i3 uses
   xss-lock/i3lock and maim/xclip.
+- Sway conditionally locks after five idle minutes, then powers displays off
+  after ten idle minutes regardless of the trusted-network lock exemption.
 - The desktop advertises a dark color-scheme preference through XDG portals
   and requests dark theme variants from GTK 3 and GTK 4 applications.
 - GTK primary selection paste is enabled so highlighted text can be pasted with
