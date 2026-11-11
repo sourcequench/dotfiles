@@ -11,8 +11,8 @@ is no separate bundle to fetch when the laptop can clone or pull the repo:
 
 ```sh
 git clone https://github.com/sourcequench/dotfiles.git ~/.local/share/personal-dotfiles
-~/.local/share/personal-dotfiles/install check --wm sway
-~/.local/share/personal-dotfiles/install --wm sway
+~/.local/share/personal-dotfiles/install check
+~/.local/share/personal-dotfiles/install
 ```
 
 The first command is only needed once. To update an existing checkout and
@@ -21,8 +21,8 @@ reapply its configuration later:
 ```sh
 cd ~/.local/share/personal-dotfiles
 git pull --ff-only
-./install check --wm sway
-./install --wm sway
+./install check
+./install
 ```
 
 To avoid remembering updates on a machine you control, the installer also
@@ -51,18 +51,18 @@ names unavailable from the laptop's configured apt sources. If packages are
 unavailable or apt installation is restricted, give the output to your system
 administrator and ask for the listed packages to be provisioned. After they
 are installed, rerun `check`; when it reports no missing requirements, deploy
-the configuration with `./install --wm sway`.
+the configuration with `./install`.
 
 If company policy permits the installer to use apt and sudo, this combines
 package installation and configuration deployment:
 
 ```sh
-./install --wm sway --install-packages
+./install --install-packages
 ```
 
 This command runs `apt-get update` and installs the selected packages before
 writing configuration. It does not use sudo for the config files. To preview
-the package names it would install, use `./install --wm sway
+the package names it would install, use `./install
 --install-packages --dry-run`.
 
 Window manager configuration is not activated until the next Sway session.
