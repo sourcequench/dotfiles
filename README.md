@@ -126,3 +126,23 @@ between tmux and Chromium. It also checks selection while a terminal app has
 enabled mouse reporting. The test requires `xvfb-run`, `dbus-run-session`,
 `xwininfo`, Kitty, tmux, Chromium, ChromeDriver, xclip, Python 3 with Selenium,
 and libXtst. The test does not touch the desktop clipboard.
+
+## Themes
+
+Colors for waybar, dunst, swaylock, the i3status colorizer and the focused
+window border come from one palette. Each theme is a file in `src/themes/`
+(`name="#rrggbb"` lines, same keys in every theme). The default theme matches
+the original look.
+
+```sh
+personal-theme list          # show themes, * marks the current one
+personal-theme set tokyo-night
+```
+
+`$mod+m` then Style does the same from the menu. A switch re-renders the
+config and reloads waybar, dunst and the window manager. The choice is kept
+across `./install` and automatic updates. To add a theme, copy
+`src/themes/default.sh`, change the colors, and run `./install`.
+
+Kitty and tmux are not themed yet: Kitty uses its built-in colors, and tmux
+uses fixed 256-color indexes.

@@ -21,19 +21,23 @@ for ssid in $TRUSTED_SSIDS; do
 done
 
 if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
+    # Colors come from the current theme; fall back to the original look.
+    [ -r "$HOME/.config/personal-dotfiles/palette.sh" ] && . "$HOME/.config/personal-dotfiles/palette.sh"
+    _c() { eval "v=\${$1:-$2}"; printf '%s' "${v#\#}"; }
     exec swaylock \
         --daemonize \
-        --color 1a1a2e \
-        --inside-color 1e1e2e88 \
-        --ring-color 285577ff \
-        --ring-ver-color 88c0d0ff \
-        --ring-wrong-color bf616aff \
-        --key-hl-color 88c0d0ff \
-        --bs-hl-color ebcb8bff \
-        --text-color e5e9f0ff \
+        --color "$(_c lock_bg '#1a1a2e')" \
+        --inside-color "$(_c lock_inside '#1e1e2e')88" \
+        --ring-color "$(_c accent '#285577')ff" \
+        --ring-ver-color "$(_c cyan '#88c0d0')ff" \
+        --ring-wrong-color "$(_c red_soft '#bf616a')ff" \
+        --key-hl-color "$(_c cyan '#88c0d0')ff" \
+        --bs-hl-color "$(_c yellow '#ebcb8b')ff" \
+        --text-color "$(_c fg_soft '#e5e9f0')ff" \
         --separator-color 00000000 \
         --indicator-radius 80 \
         --indicator-thickness 8
 else
-    exec i3lock -c 1a1a2e -n
+    [ -r "$HOME/.config/personal-dotfiles/palette.sh" ] && . "$HOME/.config/personal-dotfiles/palette.sh"
+    exec i3lock -c "$(printf '%s' "${lock_bg:-#1a1a2e}" | tr -d '#')" -n
 fi

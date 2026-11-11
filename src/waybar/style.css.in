@@ -7,70 +7,70 @@
 }
 
 window#waybar {
-    background-color: #1e1e1e;
-    color: #ffffff;
+    background-color: @bg@;
+    color: @fg@;
 }
 
 #workspaces button {
     padding: 0 5px;
     background-color: transparent;
-    color: #888888;
+    color: @fg_muted@;
 }
 
 #workspaces button.focused {
-    background-color: #285577;
-    color: #ffffff;
+    background-color: @accent@;
+    color: @fg@;
 }
 
 #workspaces button:hover {
-    background-color: #404040;
+    background-color: @bg_hover@;
 }
 
 #clock {
     padding: 0 10px;
-    color: #ffffff;
+    color: @fg@;
 }
 
 #network {
     padding: 0 8px;
-    color: #88c0d0;
+    color: @cyan@;
 }
 
 #bluetooth {
     padding: 0 8px;
-    color: #b48ead;
+    color: @magenta@;
 }
 
 #cpu {
     padding: 0 8px;
-    color: #a3be8c;
+    color: @green@;
 }
 
 #memory {
     padding: 0 8px;
-    color: #ebcb8b;
+    color: @yellow@;
 }
 
 #disk {
     padding: 0 8px;
-    color: #d08770;
+    color: @orange@;
 }
 
 #battery {
     padding: 0 8px;
-    color: #8fbcbb;
+    color: @teal@;
 }
 
 #battery.warning {
-    color: #ffaa00;
+    color: @warn@;
 }
 
 #battery.critical {
-    color: #ff5555;
+    color: @red@;
 }
 
 #network.disconnected {
-    color: #ff5555;
+    color: @red@;
 }
 
 #tray {
@@ -79,18 +79,18 @@ window#waybar {
 
 #custom-idle.off {
     padding: 0 8px;
-    color: #1e1e1e;
-    background-color: #ebcb8b;
+    color: @bg@;
+    background-color: @yellow@;
 }
 
 #custom-nightlight.on {
     padding: 0 8px;
-    color: #1e1e1e;
-    background-color: #d08770;
+    color: @bg@;
+    background-color: @orange@;
 }
 
 #custom-record.on {
     padding: 0 8px;
-    color: #ffffff;
-    background-color: #bf616a;
+    color: @fg@;
+    background-color: @red_soft@;
 }

@@ -4,7 +4,7 @@
     padding = 8
     horizontal_padding = 8
     frame_width = 2
-    frame_color = "#aaaaaa"
+    frame_color = "@border@"
     markup = full
     follow = mouse
     layer = top
@@ -15,17 +15,17 @@
     mouse_right_click = close_all
 
 [urgency_low]
-    background = "#222222"
-    foreground = "#888888"
+    background = "@bg_alt@"
+    foreground = "@fg_muted@"
     timeout = 10
 
 [urgency_normal]
-    background = "#285577"
-    foreground = "#ffffff"
+    background = "@accent@"
+    foreground = "@fg@"
     timeout = 10
 
 [urgency_critical]
-    background = "#900000"
-    foreground = "#ffffff"
-    frame_color = "#ff0000"
+    background = "@crit_bg@"
+    foreground = "@fg@"
+    frame_color = "@crit_frame@"
     timeout = 0

@@ -45,6 +45,11 @@ menu_capture() {
     esac
 }
 
+menu_style() {
+    choice=$(personal-theme list | sed 's/^[ *] //' | _pick Theme) || exit 0
+    [ -n "$choice" ] && exec personal-theme set "$choice"
+}
+
 menu_toggle() {
     choice=$(printf '%s\n' 'Touchpad' 'Idle lock' 'Nightlight' | _pick Toggle) || exit 0
     case $choice in
@@ -87,6 +92,7 @@ menu_system() {
 main() {
     case ${1:-} in
         capture) menu_capture; return ;;
+        style) menu_style; return ;;
         toggle) menu_toggle; return ;;
         network) menu_network; return ;;
         update) menu_update; return ;;
@@ -94,11 +100,12 @@ main() {
         '') ;;
         *) echo "personal-menu: unknown submenu '$1'" >&2; exit 2 ;;
     esac
-    choice=$(printf '%s\n' Apps Capture Toggle Network Update System | _pick Menu) || exit 0
+    choice=$(printf '%s\n' Apps Capture Toggle Style Network Update System | _pick Menu) || exit 0
     case $choice in
         Apps) exec personal-launcher ;;
         Capture) menu_capture ;;
         Toggle) menu_toggle ;;
+        Style) menu_style ;;
         Network) menu_network ;;
         Update) menu_update ;;
         System) menu_system ;;

@@ -3,14 +3,33 @@
 import sys
 import json
 
+import os
+import re
+
+# Colors come from the current theme; fall back to the original look.
+PALETTE = {}
+try:
+    with open(os.path.expanduser('~/.config/personal-dotfiles/palette.sh')) as f:
+        for _line in f:
+            _m = re.match(r'^([a-z_]+)="(#[0-9a-fA-F]{6})"\s*$', _line)
+            if _m:
+                PALETTE[_m.group(1)] = _m.group(2)
+except OSError:
+    pass
+
+
+def _c(name, default):
+    return PALETTE.get(name, default)
+
+
 COLORS = {
-    'wireless':  '#88c0d0',
-    'ethernet':  '#88c0d0',
-    'battery':   '#8fbcbb',
-    'cpu_usage': '#a3be8c',
-    'memory':    '#ebcb8b',
-    'disk':      '#d08770',
-    'tztime':    '#e5e9f0',
+    'wireless':  _c('cyan', '#88c0d0'),
+    'ethernet':  _c('cyan', '#88c0d0'),
+    'battery':   _c('teal', '#8fbcbb'),
+    'cpu_usage': _c('green', '#a3be8c'),
+    'memory':    _c('yellow', '#ebcb8b'),
+    'disk':      _c('orange', '#d08770'),
+    'tztime':    _c('fg_soft', '#e5e9f0'),
 }
 
 sys.stdout.write(next(sys.stdin))  # {"version":1}
