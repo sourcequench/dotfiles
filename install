@@ -81,7 +81,7 @@ fi
 [ "$dry_run" -eq 0 ] || { echo 'Dry run complete.'; exit 0; }
 cfg="$HOME/.config/personal-dotfiles"; state_dir="$HOME/.local/state/personal-dotfiles"; backup="$state_dir/backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$cfg" "$state_dir" "$HOME/.local/bin" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway" "$HOME/.config/dunst" "$HOME/.config/waybar" "$HOME/.config/xdg-desktop-portal" "$HOME/.config/systemd/user"
-for file in "$cfg/shared.conf" "$cfg/i3.conf" "$cfg/sway.conf" "$cfg/local-wm.conf" "$cfg/colors.conf" "$cfg/palette.sh" "$HOME/.tmux.conf" "$HOME/.Xmodmap" "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini" "$HOME/.config/kitty/kitty.conf" "$HOME/.config/dunst/dunstrc" "$HOME/.config/waybar/config" "$HOME/.config/waybar/style.css" "$HOME/.config/i3/config" "$HOME/.config/sway/config"; do
+for file in "$cfg/shared.conf" "$cfg/i3.conf" "$cfg/sway.conf" "$cfg/local-wm.conf" "$cfg/colors.conf" "$cfg/kitty-colors.conf" "$cfg/palette.sh" "$HOME/.tmux.conf" "$HOME/.Xmodmap" "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini" "$HOME/.config/kitty/kitty.conf" "$HOME/.config/dunst/dunstrc" "$HOME/.config/waybar/config" "$HOME/.config/waybar/style.css" "$HOME/.config/i3/config" "$HOME/.config/sway/config"; do
     if [ -e "$file" ]; then rel=${file#"$HOME/"}; mkdir -p "$backup/$(dirname "$rel")"; cp -a "$file" "$backup/$rel"; fi
 done
 [ ! -d "$backup" ] || printf 'Backup saved at %s\n' "$backup"
@@ -98,6 +98,7 @@ install -m 0644 "$source_dir"/themes/*.sh "$cfg/themes/"
 install -m 0644 "$source_dir/waybar/style.css.in" "$cfg/templates/waybar-style.css"
 install -m 0644 "$source_dir/dunst/dunstrc.in" "$cfg/templates/dunstrc"
 install -m 0644 "$source_dir/wm/colors.conf.in" "$cfg/templates/colors.conf"
+install -m 0644 "$source_dir/kitty/colors.conf.in" "$cfg/templates/kitty-colors.conf"
 install -m 0755 "$source_dir/bin/personal-theme" "$HOME/.local/bin/personal-theme"
 "$HOME/.local/bin/personal-theme" apply
 install -m 0644 "$source_dir/xdg-portal/portals.conf" "$HOME/.config/xdg-desktop-portal/portals.conf"

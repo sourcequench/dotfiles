@@ -4,7 +4,7 @@
 Usage: personal-theme apply | set NAME | list | current
 
   apply    render the current theme into the config files (no reloads)
-  set      switch theme, render, and reload waybar, dunst and the window manager
+  set      switch theme, render, and reload waybar, dunst, kitty and the window manager
   list     show installed themes
   current  show the current theme name
 
@@ -30,6 +30,7 @@ OUTPUTS = {
     "waybar-style.css": os.path.join(HOME, ".config", "waybar", "style.css"),
     "dunstrc": os.path.join(HOME, ".config", "dunst", "dunstrc"),
     "colors.conf": os.path.join(CFG, "colors.conf"),
+    "kitty-colors.conf": os.path.join(CFG, "kitty-colors.conf"),
 }
 
 
@@ -90,6 +91,9 @@ def render(name):
 
 def reload_running():
     subprocess.call(["pkill", "-USR2", "-x", "-u", str(os.getuid()), "waybar"],
+                    stderr=subprocess.DEVNULL)
+    # SIGUSR1 makes running kitty windows re-read their config.
+    subprocess.call(["pkill", "-USR1", "-x", "-u", str(os.getuid()), "kitty"],
                     stderr=subprocess.DEVNULL)
     subprocess.call(["dunstctl", "reload"], stderr=subprocess.DEVNULL)
     wm = "swaymsg" if os.environ.get("SWAYSOCK") else "i3-msg"
