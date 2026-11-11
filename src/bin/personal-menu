@@ -40,9 +40,10 @@ menu_capture() {
 }
 
 menu_toggle() {
-    choice=$(printf '%s\n' 'Touchpad' | _pick Toggle) || exit 0
+    choice=$(printf '%s\n' 'Touchpad' 'Idle lock' | _pick Toggle) || exit 0
     case $choice in
         Touchpad) exec personal-touchpad-toggle ;;
+        'Idle lock') exec personal-idle toggle ;;
     esac
 }
 

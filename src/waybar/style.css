@@ -76,3 +76,9 @@ window#waybar {
 #tray {
     padding: 0 8px;
 }
+
+#custom-idle.off {
+    padding: 0 8px;
+    color: #1e1e1e;
+    background-color: #ebcb8b;
+}

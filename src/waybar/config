@@ -3,7 +3,7 @@
     "position": "bottom",
     "modules-left": ["sway/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
+    "modules-right": ["custom/idle", "custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true
@@ -71,5 +71,13 @@
         "return-type": "json",
         "interval": 1800,
         "tooltip": true
+    },
+
+    "custom/idle": {
+        "exec": "~/.local/bin/personal-idle status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 8,
+        "on-click": "~/.local/bin/personal-idle toggle"
     }
 }

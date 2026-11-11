@@ -1,0 +1,52 @@
+#!/bin/sh
+# Manage swayidle (lock after 5 min, display off after 10 min).
+# Usage: personal-idle start | toggle | status
+#   start   run swayidle in the foreground (used by the Sway config)
+#   toggle  stop swayidle if running, otherwise start it in the background
+#   status  print waybar JSON; empty text (module hidden) while idle handling is on
+set -eu
+export PATH="$HOME/.local/bin:$PATH"
+
+_running() { pgrep -x -u "$(id -u)" swayidle >/dev/null 2>&1; }
+
+_start() {
+    exec swayidle -w \
+        timeout 300 'personal-lock' \
+        timeout 600 'swaymsg "output * power off"' \
+            resume 'swaymsg "output * power on"' \
+        before-sleep 'personal-lock'
+}
+
+_refresh_bar() { pkill -RTMIN+8 -x -u "$(id -u)" waybar 2>/dev/null || true; }
+
+case ${1:-} in
+    start)
+        _running && exit 0
+        _start
+        ;;
+    toggle)
+        if _running; then
+            pkill -x -u "$(id -u)" swayidle || true
+            # If the display was already off, swayidle will never send resume.
+            swaymsg 'output * power on' >/dev/null 2>&1 || true
+            dunstify -u low -t 2000 'Idle lock' 'Disabled' 2>/dev/null || true
+        else
+            setsid "$0" start >/dev/null 2>&1 &
+            dunstify -u low -t 2000 'Idle lock' 'Enabled' 2>/dev/null || true
+        fi
+        # Give the process a moment to appear or exit before the bar re-reads.
+        sleep 0.3
+        _refresh_bar
+        ;;
+    status)
+        if _running; then
+            printf '{"text":"","class":"on","tooltip":false}\n'
+        else
+            printf '{"text":"NO-LOCK","class":"off","tooltip":"Idle lock and display sleep are disabled. Click to re-enable."}\n'
+        fi
+        ;;
+    *)
+        echo "Usage: personal-idle start|toggle|status" >&2
+        exit 2
+        ;;
+esac
