@@ -139,6 +139,10 @@ personal-theme list          # show themes, * marks the current one
 personal-theme set tokyo-night
 ```
 
+Bundled themes: `default`, `tokyo-night`, `nord`, `gruvbox`, `catppuccin-mocha`,
+`dracula`, `solarized-dark`. All are dark; a light theme would need extra palette
+keys for text on the colored bar badges.
+
 `$mod+m` then Style does the same from the menu. A switch re-renders the
 config and reloads waybar, dunst, kitty and the window manager. The choice is kept
 across `./install` and automatic updates. To add a theme, copy
