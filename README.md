@@ -127,3 +127,13 @@ enabled mouse reporting. The test requires `xvfb-run`, `dbus-run-session`,
 `xwininfo`, Kitty, tmux, Chromium, ChromeDriver, xclip, Python 3 with Selenium,
 and libXtst. The test does not touch the desktop clipboard.
 
+
+## Optional packages
+
+The nightlight toggle (`personal-nightlight`, in the `$mod+m` menu under Toggle
+and on the bar) needs `wlsunset`. It is not required by the installer. Without
+it, the toggle shows a notification and does nothing.
+
+```sh
+sudo apt-get install wlsunset
+```

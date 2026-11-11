@@ -3,7 +3,7 @@
     "position": "bottom",
     "modules-left": ["sway/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/idle", "custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
+    "modules-right": ["custom/idle", "custom/nightlight", "custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true
@@ -79,5 +79,13 @@
         "interval": 30,
         "signal": 8,
         "on-click": "~/.local/bin/personal-idle toggle"
+    },
+
+    "custom/nightlight": {
+        "exec": "~/.local/bin/personal-nightlight status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 9,
+        "on-click": "~/.local/bin/personal-nightlight toggle"
     }
 }

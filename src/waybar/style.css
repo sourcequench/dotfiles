@@ -82,3 +82,9 @@ window#waybar {
     color: #1e1e1e;
     background-color: #ebcb8b;
 }
+
+#custom-nightlight.on {
+    padding: 0 8px;
+    color: #1e1e1e;
+    background-color: #d08770;
+}

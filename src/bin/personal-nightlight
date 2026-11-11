@@ -1,0 +1,41 @@
+#!/bin/sh
+# Manual nightlight (warm screen tint) using wlsunset.
+# Usage: personal-nightlight toggle | status
+#   toggle  start wlsunset at a constant warm temperature, or stop it
+#   status  print waybar JSON; empty text (module hidden) while the tint is off
+# Set NIGHTLIGHT_TEMP (Kelvin, default 3500) to change the warmth.
+set -eu
+
+temp=${NIGHTLIGHT_TEMP:-3500}
+
+_running() { pgrep -x -u "$(id -u)" wlsunset >/dev/null 2>&1; }
+_refresh_bar() { pkill -RTMIN+9 -x -u "$(id -u)" waybar 2>/dev/null || true; }
+_notify() { dunstify -u low -t 2000 'Nightlight' "$1" 2>/dev/null || true; }
+
+case ${1:-} in
+    toggle)
+        if _running; then
+            pkill -x -u "$(id -u)" wlsunset || true
+            _notify 'Off'
+        else
+            command -v wlsunset >/dev/null 2>&1 || { _notify 'wlsunset is not installed'; exit 127; }
+            # wlsunset needs high > low. With no location it stays in constant
+            # "night", so the two values only need to differ by 1 K.
+            setsid wlsunset -t "$temp" -T "$((temp + 1))" >/dev/null 2>&1 &
+            sleep 0.5
+            if _running; then _notify "On (${temp}K)"; else _notify 'Failed to start wlsunset'; fi
+        fi
+        _refresh_bar
+        ;;
+    status)
+        if _running; then
+            printf '{"text":"NIGHT","class":"on","tooltip":"Nightlight is on. Click to turn off."}\n'
+        else
+            printf '{"text":"","class":"off","tooltip":false}\n'
+        fi
+        ;;
+    *)
+        echo "Usage: personal-nightlight toggle|status" >&2
+        exit 2
+        ;;
+esac
