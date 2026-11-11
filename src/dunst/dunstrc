@@ -6,6 +6,13 @@
     frame_width = 2
     frame_color = "#aaaaaa"
     markup = full
+    follow = mouse
+    layer = top
+    pause_on_mouse_over = true
+    history_length = 30
+    mouse_left_click = open_url, close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
 
 [urgency_low]
     background = "#222222"
