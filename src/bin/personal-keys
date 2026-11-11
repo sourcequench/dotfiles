@@ -1,0 +1,127 @@
+#!/usr/bin/python3
+"""Print the window manager keybindings as a readable list.
+
+Reads the installed shared, WM-specific and local configs, resolves $variables,
+collapses the numbered workspace bindings, and shortens common commands.
+Used by `personal-menu keys`.
+"""
+import os
+import re
+import sys
+
+CFG = os.path.expanduser("~/.config/personal-dotfiles")
+WM = "sway.conf" if os.environ.get("SWAYSOCK") else "i3.conf"
+FILES = ["shared.conf", WM, "local-wm.conf"]
+MODS = {"Mod1": "Alt", "Mod4": "Super", "Control": "Ctrl"}
+
+
+# Friendly labels for commands that are not self-explanatory.
+LABELS = [
+    (r"^kitty$", "terminal"),
+    (r"^kill$", "close window"),
+    (r"^personal-launcher$", "app launcher"),
+    (r"^personal-menu$", "system menu"),
+    (r"^personal-menu keys$", "this keybind list"),
+    (r"^personal-lock$", "lock screen"),
+    (r"^personal-screenshot$", "screenshot a region"),
+    (r"^personal-touchpad-toggle$", "toggle touchpad"),
+    (r"^dunstctl history-pop$", "show last notification"),
+    (r"^dunstctl close-all$", "dismiss all notifications"),
+    (r"^reload$", "reload WM config"),
+    (r"^restart$", "restart WM"),
+    (r"^(swaynag|i3-nagbar).*exit", "exit WM (asks first)"),
+    (r'^mode "resize"$', "enter resize mode"),
+    (r'^mode "default"$', "leave resize mode"),
+    (r"^wpctl set-volume .*5%\+", "volume up"),
+    (r"^wpctl set-volume .*5%-", "volume down"),
+    (r"^wpctl set-mute .*toggle", "mute"),
+    (r"^brightnessctl set 5%\+", "brightness up"),
+    (r"^brightnessctl set 5%-", "brightness down"),
+    (r"^nm-connection-editor$", "network settings"),
+    (r"^blueman-manager$", "bluetooth settings"),
+    (r"^focus mode_toggle$", "toggle tiling/floating focus"),
+    (r"^layout toggle split$", "toggle split direction"),
+    (r"^split h$", "next window splits horizontally"),
+    (r"^split v$", "next window splits vertically"),
+]
+
+
+def label(cmd):
+    for pattern, text in LABELS:
+        if re.search(pattern, cmd):
+            return text
+    return cmd
+
+
+def read(name):
+    try:
+        with open(os.path.join(CFG, name)) as f:
+            return f.read().splitlines()
+    except OSError:
+        return []
+
+
+def main():
+    variables = {}
+    # First pass: variables from every file, so $mod resolves everywhere.
+    for name in FILES:
+        for line in read(name):
+            m = re.match(r"^\s*set\s+(\$\w+)\s+(.+?)\s*$", line)
+            if m:
+                variables[m.group(1)] = m.group(2).strip('"')
+
+    def expand(text):
+        for _ in range(3):
+            text = re.sub(r"\$\w+", lambda m: variables.get(m.group(0), m.group(0)), text)
+        return text
+
+    def nice_combo(combo):
+        parts = [MODS.get(p, p) for p in expand(combo).split("+")]
+        return "+".join(parts)
+
+    def nice_cmd(cmd):
+        cmd = expand(cmd)
+        cmd = re.sub(r"^exec\s+", "", cmd)
+        cmd = re.sub(r"(~|/home/\w+)/\.local/bin/", "", cmd)
+        cmd = re.sub(r"/usr/bin/", "", cmd)
+        return cmd
+
+    rows = []
+    seen = set()
+    for name in FILES:
+        mode = None
+        for line in read(name):
+            s = line.strip()
+            m = re.match(r'^mode\s+"?([^"{]+?)"?\s*\{$', s)
+            if m:
+                mode = m.group(1)
+                continue
+            if s == "}":
+                mode = None
+                continue
+            m = re.match(r"^bindsym\s+(?:--\S+\s+)*(\S+)\s+(.+)$", s)
+            if not m:
+                continue
+            combo, cmd = m.group(1), m.group(2)
+            # Numbered workspace bindings are summarised below.
+            if re.search(r"\+[0-9]$", combo) and "workspace" in cmd:
+                continue
+            key = (mode, combo)
+            if key in seen:
+                continue
+            seen.add(key)
+            keys = nice_combo(combo)
+            rows.append((("[%s] " % mode if mode else "") + keys, label(nice_cmd(cmd))))
+
+    # Summary rows for the numbered workspace bindings.
+    mod = MODS.get(variables.get("$mod", ""), variables.get("$mod", "Mod"))
+    rows.insert(0, ("%s+1..0" % mod, "go to workspace"))
+    rows.insert(1, ("%s+Shift+1..0" % mod, "move window to workspace"))
+
+    width = max(len(k) for k, _ in rows)
+    for k, c in rows:
+        print("%-*s  %s" % (width, k, c))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

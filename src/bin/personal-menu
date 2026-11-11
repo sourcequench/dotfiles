@@ -10,12 +10,17 @@ if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then wayland
 # Read choices on stdin, print the selection. Empty output means cancelled.
 _pick() {
     prompt=$1
+    lines=${2:-0}
     if [ "$wayland" -eq 1 ]; then
-        if command -v wmenu >/dev/null 2>&1; then wmenu -i -p "$prompt"; return; fi
+        if command -v wmenu >/dev/null 2>&1; then
+            if [ "$lines" -gt 0 ]; then wmenu -i -l "$lines" -p "$prompt"; else wmenu -i -p "$prompt"; fi
+            return
+        fi
         if command -v fuzzel >/dev/null 2>&1; then fuzzel --dmenu -p "$prompt "; return; fi
         if command -v tofi >/dev/null 2>&1; then tofi --prompt-text "$prompt "; return; fi
     elif command -v dmenu >/dev/null 2>&1; then
-        dmenu -i -p "$prompt"; return
+        if [ "$lines" -gt 0 ]; then dmenu -i -l "$lines" -p "$prompt"; else dmenu -i -p "$prompt"; fi
+        return
     fi
     echo "personal-menu: no dmenu-style picker found (install wmenu, fuzzel, tofi, or dmenu)." >&2
     exit 127
@@ -43,6 +48,11 @@ menu_capture() {
         'Record screen') exec personal-record toggle screen ;;
         'Stop recording') exec personal-record toggle ;;
     esac
+}
+
+menu_keys() {
+    # Read-only cheat sheet: the picker is only for browsing and filtering.
+    personal-keys | _pick Keys 25 >/dev/null || true
 }
 
 menu_style() {
@@ -92,6 +102,7 @@ menu_system() {
 main() {
     case ${1:-} in
         capture) menu_capture; return ;;
+        keys) menu_keys; return ;;
         style) menu_style; return ;;
         toggle) menu_toggle; return ;;
         network) menu_network; return ;;
@@ -100,12 +111,13 @@ main() {
         '') ;;
         *) echo "personal-menu: unknown submenu '$1'" >&2; exit 2 ;;
     esac
-    choice=$(printf '%s\n' Apps Capture Toggle Style Network Update System | _pick Menu) || exit 0
+    choice=$(printf '%s\n' Apps Capture Toggle Style Keys Network Update System | _pick Menu) || exit 0
     case $choice in
         Apps) exec personal-launcher ;;
         Capture) menu_capture ;;
         Toggle) menu_toggle ;;
         Style) menu_style ;;
+        Keys) menu_keys ;;
         Network) menu_network ;;
         Update) menu_update ;;
         System) menu_system ;;
