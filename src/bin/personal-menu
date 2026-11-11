@@ -1,0 +1,100 @@
+#!/bin/sh
+# Hierarchical system menu. Pick an entry to run an existing personal-* action.
+# Usage: personal-menu [submenu]
+set -eu
+export PATH="$HOME/.local/bin:$PATH"
+
+wayland=0
+if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then wayland=1; fi
+
+# Read choices on stdin, print the selection. Empty output means cancelled.
+_pick() {
+    prompt=$1
+    if [ "$wayland" -eq 1 ]; then
+        if command -v wmenu >/dev/null 2>&1; then wmenu -i -p "$prompt"; return; fi
+        if command -v fuzzel >/dev/null 2>&1; then fuzzel --dmenu -p "$prompt "; return; fi
+        if command -v tofi >/dev/null 2>&1; then tofi --prompt-text "$prompt "; return; fi
+    elif command -v dmenu >/dev/null 2>&1; then
+        dmenu -i -p "$prompt"; return
+    fi
+    echo "personal-menu: no dmenu-style picker found (install wmenu, fuzzel, tofi, or dmenu)." >&2
+    exit 127
+}
+
+_wm() {
+    if [ "$wayland" -eq 1 ]; then swaymsg "$@" >/dev/null; else i3-msg "$@" >/dev/null; fi
+}
+
+_term() {
+    # Run a command in a terminal that stays open so output can be read.
+    exec kitty --hold sh -c "$1"
+}
+
+_run() { "$@" >/dev/null 2>&1 & }
+
+menu_capture() {
+    choice=$(printf '%s\n' 'Region to clipboard' | _pick Capture) || exit 0
+    case $choice in
+        'Region to clipboard') exec personal-screenshot ;;
+    esac
+}
+
+menu_toggle() {
+    choice=$(printf '%s\n' 'Touchpad' | _pick Toggle) || exit 0
+    case $choice in
+        Touchpad) exec personal-touchpad-toggle ;;
+    esac
+}
+
+menu_network() {
+    choice=$(printf '%s\n' 'Wi-Fi and connections' 'Bluetooth' | _pick Network) || exit 0
+    case $choice in
+        'Wi-Fi and connections') _run nm-connection-editor ;;
+        Bluetooth) _run blueman-manager ;;
+    esac
+}
+
+menu_update() {
+    choice=$(printf '%s\n' 'Dotfiles' 'Ansible' | _pick Update) || exit 0
+    case $choice in
+        Dotfiles) _term 'personal-dotfiles-update' ;;
+        Ansible) _term 'personal-ansible-update' ;;
+    esac
+}
+
+menu_system() {
+    choice=$(printf '%s\n' 'Lock' 'Reload WM' 'Restart WM' 'Notification history' 'Exit session' | _pick System) || exit 0
+    case $choice in
+        Lock) exec personal-lock ;;
+        'Reload WM') _wm reload ;;
+        'Restart WM') _wm restart ;;
+        'Notification history') exec dunstctl history-pop ;;
+        'Exit session')
+            confirm=$(printf '%s\n' 'No' 'Yes' | _pick 'Exit session?') || exit 0
+            [ "$confirm" = Yes ] && _wm exit
+            ;;
+    esac
+}
+
+main() {
+    case ${1:-} in
+        capture) menu_capture; return ;;
+        toggle) menu_toggle; return ;;
+        network) menu_network; return ;;
+        update) menu_update; return ;;
+        system) menu_system; return ;;
+        '') ;;
+        *) echo "personal-menu: unknown submenu '$1'" >&2; exit 2 ;;
+    esac
+    choice=$(printf '%s\n' Apps Capture Toggle Network Update System | _pick Menu) || exit 0
+    case $choice in
+        Apps) exec personal-launcher ;;
+        Capture) menu_capture ;;
+        Toggle) menu_toggle ;;
+        Network) menu_network ;;
+        Update) menu_update ;;
+        System) menu_system ;;
+    esac
+}
+
+main "$@"
