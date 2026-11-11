@@ -33,7 +33,7 @@ codename=$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | head -n 1 | tr -d 
 [ "$os_id" = debian ] || { echo "Expected Debian (ID=debian), got $os_id." >&2; exit 1; }
 base='tmux kitty kitty-terminfo dunst i3status wireplumber brightnessctl libglib2.0-bin libnotify-bin network-manager-applet blueman python3'
 i3pkgs='i3-wm i3lock suckless-tools picom dex xss-lock maim xclip xinput x11-xkb-utils x11-xserver-utils inputplug'
-swaypkgs='sway swayidle swaylock xwayland grim slurp wl-clipboard waybar xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-wlr wdisplays'
+swaypkgs='sway swayidle wlsunset wf-recorder swappy swaylock xwayland grim slurp wl-clipboard waybar xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-wlr wdisplays'
 pkgs="$base $i3pkgs $swaypkgs"
 if [ "$cron_updates" -eq 1 ]; then pkgs="$pkgs cron"; fi
 missing=; unavailable=; commands_missing=
@@ -99,6 +99,7 @@ install -m 0644 "$source_dir/xdg-portal/portals.conf" "$HOME/.config/xdg-desktop
 install -m 0755 "$source_dir/bin/personal-menu" "$HOME/.local/bin/personal-menu"
 install -m 0755 "$source_dir/bin/personal-idle" "$HOME/.local/bin/personal-idle"
 install -m 0755 "$source_dir/bin/personal-nightlight" "$HOME/.local/bin/personal-nightlight"
+install -m 0755 "$source_dir/bin/personal-record" "$HOME/.local/bin/personal-record"
 install -m 0755 "$source_dir/bin/personal-launcher" "$HOME/.local/bin/personal-launcher"
 install -m 0755 "$source_dir/bin/personal-lock" "$HOME/.local/bin/personal-lock"
 install -m 0755 "$source_dir/bin/personal-screenshot" "$HOME/.local/bin/personal-screenshot"

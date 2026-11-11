@@ -1,9 +1,77 @@
 #!/bin/sh
+# Screenshot to clipboard and file.
+# Usage: personal-screenshot [region|window|screen] [--edit]
+#   region  pick an area with slurp (default)
+#   window  the focused window (Sway only)
+#   screen  the focused output (Sway only)
+#   --edit  annotate with swappy before saving
+# Files go to ${PERSONAL_SCREENSHOT_DIR:-~/Pictures/Screenshots}.
 set -eu
-if [ -n "${SWAYSOCK:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
-    command -v slurp >/dev/null 2>&1 || { echo "slurp is required for region selection." >&2; exit 127; }
-    grim -g "$(slurp)" - | wl-copy --type image/png
-else
+
+mode=region
+edit=0
+for arg in "$@"; do
+    case $arg in
+        region|window|screen) mode=$arg ;;
+        --edit) edit=1 ;;
+        *) echo "Usage: personal-screenshot [region|window|screen] [--edit]" >&2; exit 2 ;;
+    esac
+done
+
+_notify() { dunstify -u low -t 3000 'Screenshot' "$1" 2>/dev/null || true; }
+
+if [ -z "${SWAYSOCK:-}" ] && [ "${XDG_SESSION_TYPE:-}" != wayland ]; then
+    [ "$mode" = region ] || { echo "personal-screenshot: $mode needs Sway." >&2; exit 2; }
     maim -s -u | xclip -selection clipboard -t image/png -i
+    exit 0
 fi
 
+dir=${PERSONAL_SCREENSHOT_DIR:-$HOME/Pictures/Screenshots}
+mkdir -p "$dir"
+file=$dir/screenshot-$(date +%Y%m%d-%H%M%S).png
+
+case $mode in
+    region)
+        command -v slurp >/dev/null 2>&1 || { echo "slurp is required for region selection." >&2; exit 127; }
+        geometry=$(slurp) || exit 0
+        ;;
+    window)
+        geometry=$(swaymsg -t get_tree | python3 -c '
+import json, sys
+def find(n):
+    if n.get("focused") and n.get("type") in ("con", "floating_con"):
+        return n
+    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+        r = find(c)
+        if r:
+            return r
+r = (find(json.load(sys.stdin)) or {}).get("rect")
+if r:
+    print("%d,%d %dx%d" % (r["x"], r["y"], r["width"], r["height"]))
+') || true
+        [ -n "$geometry" ] || { _notify 'No focused window'; exit 1; }
+        ;;
+    screen)
+        output=$(swaymsg -t get_outputs | python3 -c '
+import json, sys
+for o in json.load(sys.stdin):
+    if o.get("focused"):
+        print(o["name"])
+        break
+') || true
+        ;;
+esac
+
+if [ "$mode" = screen ]; then
+    if [ -n "${output:-}" ]; then grim -o "$output" "$file"; else grim "$file"; fi
+else
+    grim -g "$geometry" "$file"
+fi
+
+if [ "$edit" -eq 1 ]; then
+    command -v swappy >/dev/null 2>&1 || { _notify 'swappy is not installed; saved without editing'; edit=0; }
+fi
+[ "$edit" -eq 1 ] && swappy -f "$file" -o "$file"
+
+wl-copy --type image/png < "$file"
+_notify "Copied and saved to $file"

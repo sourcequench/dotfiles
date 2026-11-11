@@ -88,3 +88,9 @@ window#waybar {
     color: #1e1e1e;
     background-color: #d08770;
 }
+
+#custom-record.on {
+    padding: 0 8px;
+    color: #ffffff;
+    background-color: #bf616a;
+}

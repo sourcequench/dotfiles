@@ -1,0 +1,51 @@
+#!/bin/sh
+# Screen recording toggle using wf-recorder.
+# Usage: personal-record toggle [region|screen] | status
+#   toggle  stop the running recording, or start one (region by default)
+#   status  print waybar JSON; empty text (module hidden) while not recording
+# Files go to ${PERSONAL_RECORDING_DIR:-~/Videos/Recordings}.
+set -eu
+
+_running() { pgrep -x -u "$(id -u)" wf-recorder >/dev/null 2>&1; }
+_refresh_bar() { pkill -RTMIN+10 -x -u "$(id -u)" waybar 2>/dev/null || true; }
+_notify() { dunstify -u low -t 3000 'Recording' "$1" 2>/dev/null || true; }
+
+case ${1:-} in
+    toggle)
+        if _running; then
+            pkill -INT -x -u "$(id -u)" wf-recorder || true
+            _notify 'Stopped'
+            sleep 0.5
+            _refresh_bar
+            exit 0
+        fi
+        command -v wf-recorder >/dev/null 2>&1 || { _notify 'wf-recorder is not installed'; exit 127; }
+        dir=${PERSONAL_RECORDING_DIR:-$HOME/Videos/Recordings}
+        mkdir -p "$dir"
+        file=$dir/recording-$(date +%Y%m%d-%H%M%S).mp4
+        case ${2:-region} in
+            region)
+                geometry=$(slurp) || exit 0
+                setsid wf-recorder -g "$geometry" -f "$file" >/dev/null 2>&1 &
+                ;;
+            screen)
+                setsid wf-recorder -f "$file" >/dev/null 2>&1 &
+                ;;
+            *) echo "Usage: personal-record toggle [region|screen]" >&2; exit 2 ;;
+        esac
+        sleep 0.5
+        if _running; then _notify "Recording to $file"; else _notify 'Failed to start wf-recorder'; fi
+        _refresh_bar
+        ;;
+    status)
+        if _running; then
+            printf '{"text":"REC","class":"on","tooltip":"Recording. Click to stop."}\n'
+        else
+            printf '{"text":"","class":"off","tooltip":false}\n'
+        fi
+        ;;
+    *)
+        echo "Usage: personal-record toggle [region|screen] | status" >&2
+        exit 2
+        ;;
+esac

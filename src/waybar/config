@@ -3,7 +3,7 @@
     "position": "bottom",
     "modules-left": ["sway/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/idle", "custom/nightlight", "custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
+    "modules-right": ["custom/idle", "custom/record", "custom/nightlight", "custom/weather", "network", "bluetooth", "cpu", "memory", "disk", "battery#bat0", "battery#bat1", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true
@@ -87,5 +87,13 @@
         "interval": 30,
         "signal": 9,
         "on-click": "~/.local/bin/personal-nightlight toggle"
+    },
+
+    "custom/record": {
+        "exec": "~/.local/bin/personal-record status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 10,
+        "on-click": "~/.local/bin/personal-record toggle"
     }
 }

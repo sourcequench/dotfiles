@@ -33,9 +33,15 @@ _term() {
 _run() { "$@" >/dev/null 2>&1 & }
 
 menu_capture() {
-    choice=$(printf '%s\n' 'Region to clipboard' | _pick Capture) || exit 0
+    choice=$(printf '%s\n' 'Region' 'Region + annotate' 'Window' 'Screen' 'Record region' 'Record screen' 'Stop recording' | _pick Capture) || exit 0
     case $choice in
-        'Region to clipboard') exec personal-screenshot ;;
+        Region) exec personal-screenshot region ;;
+        'Region + annotate') exec personal-screenshot region --edit ;;
+        Window) exec personal-screenshot window ;;
+        Screen) exec personal-screenshot screen ;;
+        'Record region') exec personal-record toggle region ;;
+        'Record screen') exec personal-record toggle screen ;;
+        'Stop recording') exec personal-record toggle ;;
     esac
 }
 
