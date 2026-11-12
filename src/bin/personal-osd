@@ -1,0 +1,33 @@
+#!/bin/sh
+# Volume and brightness keys with an on-screen display.
+# Usage: personal-osd volume-up|volume-down|mute|mic-mute|brightness-up|brightness-down|caps-lock
+# Uses swayosd when its server is running (Sway); otherwise does the change silently.
+set -eu
+
+osd() { swayosd-client "$@"; }
+have_osd() { command -v swayosd-client >/dev/null 2>&1 && pgrep -x -u "$(id -u)" swayosd-server >/dev/null 2>&1; }
+
+if have_osd; then
+    case ${1:-} in
+        volume-up)       osd --output-volume raise --max-volume 100 ;;
+        volume-down)     osd --output-volume lower ;;
+        mute)            osd --output-volume mute-toggle ;;
+        mic-mute)        osd --input-volume mute-toggle ;;
+        brightness-up)   osd --brightness raise ;;
+        brightness-down) osd --brightness lower ;;
+        caps-lock)       osd --caps-lock ;;
+        *) echo "Usage: personal-osd volume-up|volume-down|mute|mic-mute|brightness-up|brightness-down|caps-lock" >&2; exit 2 ;;
+    esac
+    exit 0
+fi
+
+case ${1:-} in
+    volume-up)       wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ && wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 ;;
+    volume-down)     wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- && wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 ;;
+    mute)            wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    mic-mute)        wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ;;
+    brightness-up)   brightnessctl set 5%+ ;;
+    brightness-down) brightnessctl set 5%- ;;
+    caps-lock)       ;;
+    *) echo "Usage: personal-osd volume-up|volume-down|mute|mic-mute|brightness-up|brightness-down|caps-lock" >&2; exit 2 ;;
+esac

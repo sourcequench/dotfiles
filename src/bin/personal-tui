@@ -1,0 +1,16 @@
+#!/bin/sh
+# Open a terminal app in a floating kitty window.
+# Usage: personal-tui wifi|bluetooth|audio|monitor|git
+set -eu
+
+case ${1:-} in
+    wifi)      cmd='nmtui' ;;
+    bluetooth) cmd='bluetoothctl' ;;
+    audio)     cmd='pulsemixer' ;;
+    monitor)   cmd='btop' ;;
+    git)       cmd='lazygit' ;;
+    *) echo "Usage: personal-tui wifi|bluetooth|audio|monitor|git" >&2; exit 2 ;;
+esac
+
+command -v "$cmd" >/dev/null 2>&1 || { dunstify -u low "TUI" "$cmd is not installed" 2>/dev/null || true; exit 127; }
+exec kitty --class personal-tui --title "$cmd" -e "$cmd"

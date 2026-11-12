@@ -70,10 +70,13 @@ menu_toggle() {
 }
 
 menu_network() {
-    choice=$(printf '%s\n' 'Wi-Fi and connections' 'Bluetooth' | _pick Network) || exit 0
+    choice=$(printf '%s\n' 'Wi-Fi (TUI)' 'Bluetooth (TUI)' 'Audio (TUI)' 'Connections (GUI)' 'Bluetooth (GUI)' | _pick Network) || exit 0
     case $choice in
-        'Wi-Fi and connections') _run nm-connection-editor ;;
-        Bluetooth) _run blueman-manager ;;
+        'Wi-Fi (TUI)') exec personal-tui wifi ;;
+        'Bluetooth (TUI)') exec personal-tui bluetooth ;;
+        'Audio (TUI)') exec personal-tui audio ;;
+        'Connections (GUI)') _run nm-connection-editor ;;
+        'Bluetooth (GUI)') _run blueman-manager ;;
     esac
 }
 
@@ -86,8 +89,9 @@ menu_update() {
 }
 
 menu_system() {
-    choice=$(printf '%s\n' 'Lock' 'Reload WM' 'Restart WM' 'Notification history' 'Exit session' | _pick System) || exit 0
+    choice=$(printf '%s\n' 'System monitor' 'Lock' 'Reload WM' 'Restart WM' 'Notification history' 'Exit session' | _pick System) || exit 0
     case $choice in
+        'System monitor') exec personal-tui monitor ;;
         Lock) exec personal-lock ;;
         'Reload WM') _wm reload ;;
         'Restart WM') _wm restart ;;

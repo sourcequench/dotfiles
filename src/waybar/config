@@ -19,14 +19,14 @@
         "format-ethernet": "ETH: {ipaddr}",
         "format-linked": "ETH (no IP)",
         "format-disconnected": "Disconnected",
-        "on-click": "nm-connection-editor"
+        "on-click": "~/.local/bin/personal-tui wifi"
     },
 
     "bluetooth": {
         "format": "BT",
         "format-connected": "BT: {device_alias}",
         "format-off": "",
-        "on-click": "blueman-manager"
+        "on-click": "~/.local/bin/personal-tui bluetooth"
     },
 
     "cpu": {
