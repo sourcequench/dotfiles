@@ -15,13 +15,20 @@ cd ~/.local/share/personal-dotfiles
 ```
 
 If `check` reports unavailable packages, ask the administrator to install them,
-then rerun. The installer sets up both i3 and sway, installs Signal, Helium,
-and Obsidian to `~/bin` (if the apt repos are not configured), configures
-Obsidian WebDAV sync for `~/md` via Remotely Save, and installs an hourly cron
-job that pulls and reapplies dotfiles updates. Its output is written to
+then rerun. The installer sets up both i3 and sway, installs Signal and Helium
+to `~/bin` (if the apt repos are not configured), aligns Obsidian configuration
+for `~/md` via Remotely Save, actuates the sync service, and installs an hourly
+cron job that pulls and reapplies dotfiles updates. Its output is written to
 `~/.local/state/personal-dotfiles/update.log`.
 
-## Obsidian sync credentials
+## Obsidian configuration and sync
+
+Obsidian is assumed to be installed via standard Debian package (`/usr/bin/obsidian`).
+The dotfiles installer aligns the following configuration:
+- Vault ignore filters in `~/md/.obsidian/app.json` to prevent indexing overhead.
+- Remotely Save community plugin with WebDAV sync (`https://dav.sourcequench.org`).
+- Disabling native Obsidian Sync to prevent sync conflicts.
+- Actuating the headless service (`obsidian.service`) whenever configuration changes.
 
 Obsidian WebDAV sync credentials can be supplied in any of the following ways:
 1. Log in and unlock Bitwarden CLI (`bw unlock`), which provides the token from item `Obsidian WebDAV Sync`.

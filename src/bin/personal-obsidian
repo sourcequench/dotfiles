@@ -1,9 +1,0 @@
-#!/bin/sh
-if command -v obsidian >/dev/null 2>&1; then
-    exec obsidian "$@"
-fi
-if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
-    exec "$HOME/bin/opt/Obsidian/obsidian" "$@"
-fi
-echo 'personal-obsidian: obsidian not found' >&2
-exit 1
