@@ -1,0 +1,28 @@
+{
+  "vimMode": true,
+  "autoPairMarkdown": false,
+  "newFileLocation": "current",
+  "defaultViewMode": "preview",
+  "alwaysUpdateLinks": true,
+  "attachmentFolderPath": "./attachments",
+  "userIgnoreFilters": [
+    "/(^|\\/)node_modules(\\/?|$)/",
+    "/(^|\\/)[^\\/]*venv[^\\/]*(\\/?|$)/",
+    "/(^|\\/)site-packages(\\/?|$)/",
+    "/(^|\\/)build(\\/?|$)/",
+    "/(^|\\/)dist(\\/?|$)/",
+    "/(^|\\/)target(\\/?|$)/",
+    "/(^|\\/)\\.gradle(\\/?|$)/",
+    "/(^|\\/)\\.git(\\/?|$)/",
+    "/(^|\\/)\\.dart_tool(\\/?|$)/",
+    "/(^|\\/)__pycache__(\\/?|$)/",
+    "/(^|\\/)\\.(pytest_cache|mypy_cache|next|turbo)(\\/?|$)/",
+    "/\\.(mp4|mkv|webm|avi|mov|aab|apk|so(\\.[0-9]+)*|whl|tar|gz|zip)$/"
+  ],
+  "pdfExportSettings": {
+    "pageSize": "Letter",
+    "landscape": false,
+    "margin": "0",
+    "downscalePercent": 70
+  }
+}

@@ -1,0 +1,175 @@
+#!/bin/sh
+set -eu
+
+vault_dir="${OBSIDIAN_VAULT_DIR:-$HOME/md}"
+obsidian_dir="$vault_dir/.obsidian"
+plugins_dir="$obsidian_dir/plugins"
+remotely_dir="$plugins_dir/remotely-save"
+config_dir="$HOME/.config/personal-dotfiles"
+obsidian_app_config="$HOME/.config/obsidian"
+state_dir="$HOME/.local/state/personal-dotfiles"
+
+mkdir -p "$remotely_dir" "$obsidian_app_config" "$config_dir" "$state_dir"
+
+# 1. Register vault in ~/.config/obsidian/obsidian.json
+obsidian_json="$obsidian_app_config/obsidian.json"
+if [ ! -f "$obsidian_json" ]; then
+    vault_id=$(printf '%s' "$vault_dir" | sha256sum | cut -c 1-16)
+    ts=$(date +%s%3N 2>/dev/null || date +%s000)
+    printf '{"vaults":{"%s":{"path":"%s","ts":%s,"open":true}},"cli":true}\n' "$vault_id" "$vault_dir" "$ts" > "$obsidian_json"
+else
+    python3 -c "
+import json, os, time
+path = os.path.expanduser('$obsidian_json')
+vault = os.path.expanduser('$vault_dir')
+try:
+    with open(path, 'r') as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+vaults = data.setdefault('vaults', {})
+found = any(v.get('path') == vault for v in vaults.values())
+if not found:
+    import hashlib
+    vid = hashlib.sha256(vault.encode()).hexdigest()[:16]
+    vaults[vid] = {'path': vault, 'ts': int(time.time() * 1000), 'open': True}
+data['cli'] = True
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null || true
+fi
+
+# 2. Locate dotfiles template directory
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+src_obsidian=""
+if [ -d "$script_dir/../obsidian" ]; then
+    src_obsidian="$script_dir/../obsidian"
+elif [ -d "$HOME/.local/share/personal-dotfiles/src/obsidian" ]; then
+    src_obsidian="$HOME/.local/share/personal-dotfiles/src/obsidian"
+fi
+
+# 3. Deploy app.json with userIgnoreFilters to prevent vault bloat
+if [ -n "$src_obsidian" ] && [ -f "$src_obsidian/app.json" ]; then
+    if [ ! -f "$obsidian_dir/app.json" ]; then
+        cp "$src_obsidian/app.json" "$obsidian_dir/app.json"
+    else
+        python3 -c "
+import json
+src_p = '$src_obsidian/app.json'
+dst_p = '$obsidian_dir/app.json'
+with open(src_p) as f:
+    s = json.load(f)
+with open(dst_p) as f:
+    d = json.load(f)
+d['userIgnoreFilters'] = s.get('userIgnoreFilters', [])
+with open(dst_p, 'w') as f:
+    json.dump(d, f, indent=2)
+" 2>/dev/null || true
+    fi
+fi
+
+# 4. Enable remotely-save community plugin
+if [ ! -f "$obsidian_dir/community-plugins.json" ]; then
+    printf '[\n  "remotely-save"\n]\n' > "$obsidian_dir/community-plugins.json"
+else
+    python3 -c "
+import json
+dst_p = '$obsidian_dir/community-plugins.json'
+try:
+    with open(dst_p) as f:
+        plugins = json.load(f)
+except Exception:
+    plugins = []
+if 'remotely-save' not in plugins:
+    plugins.append('remotely-save')
+with open(dst_p, 'w') as f:
+    json.dump(plugins, f, indent=2)
+" 2>/dev/null || true
+fi
+
+# 5. Disable native sync in core-plugins.json to avoid sync collisions
+if [ ! -f "$obsidian_dir/core-plugins.json" ]; then
+    if [ -n "$src_obsidian" ] && [ -f "$src_obsidian/core-plugins.json" ]; then
+        cp "$src_obsidian/core-plugins.json" "$obsidian_dir/core-plugins.json"
+    fi
+else
+    python3 -c "
+import json
+dst_p = '$obsidian_dir/core-plugins.json'
+try:
+    with open(dst_p) as f:
+        p = json.load(f)
+except Exception:
+    p = {}
+p['sync'] = False
+with open(dst_p, 'w') as f:
+    json.dump(p, f, indent=2)
+" 2>/dev/null || true
+fi
+
+# 6. Ensure remotely-save plugin files exist
+remotely_release="https://github.com/remotely-save/remotely-save/releases/latest/download"
+for file in main.js manifest.json styles.css; do
+    target="$remotely_dir/$file"
+    if [ ! -f "$target" ]; then
+        curl -fsSL "$remotely_release/$file" -o "$target" 2>/dev/null || true
+    fi
+done
+
+# 7. Configure remotely-save WebDAV settings
+password=""
+data_json="$remotely_dir/data.json"
+if [ -f "$data_json" ]; then
+    password=$(python3 -c "
+import json
+try:
+    with open('$data_json') as f:
+        d = json.load(f)
+    print(d.get('webdav', {}).get('password', ''))
+except Exception:
+    pass
+" 2>/dev/null || true)
+fi
+
+if [ -z "$password" ] && [ -f "$config_dir/obsidian.env" ]; then
+    password=$(sed -n 's/^OBSIDIAN_WEBDAV_PASSWORD=//p' "$config_dir/obsidian.env" | tr -d '"' | tr -d "'")
+fi
+
+if [ -z "$password" ] && [ -f "$HOME/.local/state/obsidian-minio/creds.env" ]; then
+    password=$(sed -n 's/^PASSWORD=//p' "$HOME/.local/state/obsidian-minio/creds.env" | tr -d '"' | tr -d "'")
+fi
+
+if [ -z "$password" ] && command -v bw >/dev/null 2>&1; then
+    password=$(bw get password "Obsidian WebDAV Sync" 2>/dev/null || true)
+fi
+
+if [ -n "$src_obsidian" ] && [ -f "$src_obsidian/remotely-save-data.json.template" ]; then
+    template="$src_obsidian/remotely-save-data.json.template"
+    if [ ! -f "$data_json" ]; then
+        sed "s/__WEBDAV_PASSWORD__/$password/g" "$template" > "$data_json"
+    else
+        python3 -c "
+import json
+with open('$template') as f:
+    tmpl = json.load(f)
+with open('$data_json') as f:
+    cur = json.load(f)
+tmpl_wd = tmpl.get('webdav', {})
+cur_wd = cur.setdefault('webdav', {})
+cur_wd['address'] = tmpl_wd.get('address', 'https://dav.sourcequench.org')
+cur_wd['username'] = tmpl_wd.get('username', 'obsidian-admin')
+cur_wd['authType'] = tmpl_wd.get('authType', 'basic')
+cur_wd['manualRecursive'] = True
+cur_wd['depth'] = 'manual_1'
+if '$password':
+    cur_wd['password'] = '$password'
+cur['serviceType'] = 'webdav'
+cur['syncConfigDir'] = True
+cur['agreeToUseSyncV3'] = True
+cur['ignorePaths'] = tmpl.get('ignorePaths', [])
+with open('$data_json', 'w') as f:
+    json.dump(cur, f, indent=2)
+" 2>/dev/null || true
+    fi
+    chmod 0600 "$data_json" 2>/dev/null || true
+fi

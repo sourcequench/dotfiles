@@ -120,10 +120,18 @@ install -m 0755 "$source_dir/bin/personal-keyboard-remap" "$HOME/.local/bin/pers
 install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/personal-apps-install"
 install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-signal"
 install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
+install -m 0755 "$source_dir/bin/personal-obsidian" "$HOME/.local/bin/personal-obsidian"
+install -m 0755 "$source_dir/bin/personal-obsidian-setup" "$HOME/.local/bin/personal-obsidian-setup"
+install -m 0644 "$source_dir/systemd/user/obsidian.service" "$HOME/.config/systemd/user/obsidian.service"
 helium_desktop="$HOME/.local/share/applications/helium.desktop"
 if [ -f "$helium_desktop" ] && [ -f /usr/share/applications/helium.desktop ] && \
         grep -q "^Exec=$HOME/.local/bin/personal-helium" "$helium_desktop"; then
     install -m 0644 /usr/share/applications/helium.desktop "$helium_desktop"
+fi
+obsidian_desktop="$HOME/.local/share/applications/obsidian.desktop"
+if [ -f "$obsidian_desktop" ] && [ -f /usr/share/applications/obsidian.desktop ] && \
+        grep -q "^Exec=$HOME/.local/bin/personal-obsidian" "$obsidian_desktop"; then
+    install -m 0644 /usr/share/applications/obsidian.desktop "$obsidian_desktop"
 fi
 install -m 0755 "$source_dir/bin/personal-weather" "$HOME/.local/bin/personal-weather"
 install -m 0755 "$source_dir/bin/personal-tmux-status" "$HOME/.local/bin/personal-tmux-status"
@@ -144,6 +152,8 @@ printf 'include ~/.config/personal-dotfiles/i3.conf\n' > "$HOME/.config/i3/confi
 install -m 0644 "$source_dir/wm/sway.conf" "$cfg/sway.conf"
 printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/config"
 "$HOME/.local/bin/personal-apps-install" || true
+"$HOME/.local/bin/personal-obsidian-setup" || true
+systemctl --user enable obsidian.service 2>/dev/null || true
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 if [ "$cron_updates" -eq 1 ]; then

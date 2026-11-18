@@ -124,5 +124,42 @@ install_helium() {
     echo 'Helium installed.'
 }
 
+configure_obsidian() {
+    mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+    if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
+        ln -sf "$HOME/bin/opt/Obsidian/obsidian" "$HOME/.local/bin/obsidian"
+    fi
+    for f in "$HOME/bin/usr/share/applications/obsidian.desktop"; do
+        if [ -f "$f" ]; then
+            sed 's|^Exec=/opt/Obsidian/obsidian|Exec='"$HOME"'/bin/opt/Obsidian/obsidian|' "$f" > "$HOME/.local/share/applications/obsidian.desktop"
+            break
+        fi
+    done
+}
+
+install_obsidian() {
+    if command -v obsidian >/dev/null 2>&1; then
+        return 0
+    fi
+    obsidian_version="1.15.1"
+    latest_url="https://github.com/obsidianmd/obsidian-releases/releases/download/v${obsidian_version}/obsidian_${obsidian_version}_amd64.deb"
+    version_file="$state_dir/obsidian-version"
+    if package_is_current "$HOME/bin/opt/Obsidian/obsidian" "$version_file" \
+            "$state_dir/obsidian-url" "$obsidian_version" "$latest_url"; then
+        configure_obsidian
+        return 0
+    fi
+    printf 'Installing Obsidian %s from %s\n' "$obsidian_version" "$latest_url"
+    if curl -fsSL -o "$work_dir/obsidian.deb" "$latest_url"; then
+        dpkg-deb -x "$work_dir/obsidian.deb" "$HOME/bin"
+        configure_obsidian
+        printf '%s\n' "$obsidian_version" > "$version_file"
+        echo 'Obsidian installed.'
+    else
+        echo 'personal-apps-install: cannot download Obsidian deb' >&2
+    fi
+}
+
 install_signal
 install_helium
+install_obsidian

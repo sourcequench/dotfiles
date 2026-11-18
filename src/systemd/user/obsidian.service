@@ -1,0 +1,13 @@
+[Unit]
+Description=Obsidian Headless Sync
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sh -c 'rm -f %h/.config/obsidian/Singleton*'
+ExecStart=/bin/sh -c 'exec $(command -v personal-obsidian || command -v obsidian || echo %h/.local/bin/obsidian) %h/md --ozone-platform=headless --disable-gpu --no-sandbox'
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

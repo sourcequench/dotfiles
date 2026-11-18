@@ -15,10 +15,18 @@ cd ~/.local/share/personal-dotfiles
 ```
 
 If `check` reports unavailable packages, ask the administrator to install them,
-then rerun. The installer sets up both i3 and sway, installs Signal and Helium
-to `~/bin` (if the apt repos are not configured), and installs an hourly cron
+then rerun. The installer sets up both i3 and sway, installs Signal, Helium,
+and Obsidian to `~/bin` (if the apt repos are not configured), configures
+Obsidian WebDAV sync for `~/md` via Remotely Save, and installs an hourly cron
 job that pulls and reapplies dotfiles updates. Its output is written to
 `~/.local/state/personal-dotfiles/update.log`.
+
+## Obsidian sync credentials
+
+Obsidian WebDAV sync credentials can be supplied in any of the following ways:
+1. Log in and unlock Bitwarden CLI (`bw unlock`), which provides the token from item `Obsidian WebDAV Sync`.
+2. Add `OBSIDIAN_WEBDAV_PASSWORD=<token>` to `~/.config/personal-dotfiles/obsidian.env` with permissions 0600.
+3. Paste the WebDAV token once in Obsidian under Settings > Community plugins > Remotely Save.
 
 Backups of replaced files are saved under
 `~/.local/state/personal-dotfiles/backup-*`.
