@@ -128,6 +128,7 @@ if [ -f "$helium_desktop" ] && [ -f /usr/share/applications/helium.desktop ] && 
     install -m 0644 /usr/share/applications/helium.desktop "$helium_desktop"
 fi
 install -m 0755 "$source_dir/bin/personal-weather" "$HOME/.local/bin/personal-weather"
+install -m 0755 "$source_dir/bin/personal-agent-statusline" "$HOME/.local/bin/personal-agent-statusline"
 install -m 0755 "$source_dir/bin/personal-tmux-status" "$HOME/.local/bin/personal-tmux-status"
 install -m 0755 "$source_dir/bin/personal-tmux-pane" "$HOME/.local/bin/personal-tmux-pane"
 install -m 0755 "$source_dir/bin/personal-tmux-discovery" "$HOME/.local/bin/personal-tmux-discovery"

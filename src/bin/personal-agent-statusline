@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# Unified status line script for Claude Code and Antigravity CLI (agy)
+# Layout: Directory | Context Window | Model | 5h Limit & Reset | Weekly Limit & Reset | Git Branch | Secondary
+
+caller="${1:-}"
+
+input=$(cat)
+
+# --- ANSI Colors ---
+RESET='\033[0m'
+BOLD='\033[1m'
+DIM='\033[2m'
+CYAN='\033[36m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BLUE='\033[34m'
+MAGENTA='\033[35m'
+RED='\033[31m'
+GRAY='\033[90m'
+
+# --- Extract JSON Fields ---
+cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""' 2>/dev/null)
+
+# Context usage
+ctx_used=$(echo "$input" | jq -r '.context_window.used_percentage // empty' 2>/dev/null)
+ctx_size=$(echo "$input" | jq -r '.context_window.context_window_size // empty' 2>/dev/null)
+
+# Model
+model=$(echo "$input" | jq -r '.model.display_name // .model.id // empty' 2>/dev/null)
+
+# Rate limits (5h & 1w/7d)
+five_h=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // .rate_limits.five_h // empty' 2>/dev/null)
+seven_d=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // .rate_limits.weekly // .rate_limits.one_week // empty' 2>/dev/null)
+five_h_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // .rate_limits.five_h_resets_at // empty' 2>/dev/null)
+seven_d_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // .rate_limits.weekly_resets_at // empty' 2>/dev/null)
+
+# Agent state / permissions / thinking / sandbox / effort
+agent_state=$(echo "$input" | jq -r '.agent_state // empty' 2>/dev/null)
+effort=$(echo "$input" | jq -r '.effort.level // empty' 2>/dev/null)
+thinking=$(echo "$input" | jq -r '.thinking.enabled // false' 2>/dev/null)
+sandbox=$(echo "$input" | jq -r '.sandbox.enabled // empty' 2>/dev/null)
+
+# Worktree / Branch from payload
+payload_branch=$(echo "$input" | jq -r '.worktree.branch // .agent_branch // empty' 2>/dev/null)
+
+# --- Format Reset Timestamp ---
+format_reset() {
+  local raw="$1"
+  [ -z "$raw" ] || [ "$raw" = "null" ] && return
+  local ts=""
+  if [[ "$raw" =~ ^[0-9]+$ ]]; then
+    if [ "${#raw}" -gt 10 ]; then
+      ts=$(( raw / 1000 ))
+    else
+      ts="$raw"
+    fi
+  else
+    ts=$(date -d "$raw" +%s 2>/dev/null || true)
+  fi
+  [ -z "$ts" ] && return
+  local now diff
+  now=$(date +%s)
+  diff=$(( ts - now ))
+  if [ "$diff" -lt 86400 ] && [ "$diff" -ge 0 ]; then
+    date -d "@$ts" "+%H:%M" 2>/dev/null
+  elif [ "$diff" -ge 86400 ]; then
+    date -d "@$ts" "+%a %H:%M" 2>/dev/null
+  else
+    echo "now"
+  fi
+}
+
+parts=()
+
+# 1. Directory (First)
+if [ -n "$cwd" ]; then
+  if [[ "$cwd" == "$HOME"* ]]; then
+    short_cwd="~${cwd#$HOME}"
+  else
+    short_cwd="$cwd"
+  fi
+  parts+=("$(printf "${BLUE}${BOLD}%s${RESET}" "$short_cwd")")
+fi
+
+# 2. Context Window (Second)
+if [ -n "$ctx_used" ] && [ "$ctx_used" != "null" ]; then
+  used_int=$(printf "%.0f" "$ctx_used" 2>/dev/null || echo "0")
+  if [ "$used_int" -ge 80 ]; then
+    ctx_color="$RED"
+  elif [ "$used_int" -ge 50 ]; then
+    ctx_color="$YELLOW"
+  else
+    ctx_color="$GREEN"
+  fi
+  if [ -n "$ctx_size" ] && [ "$ctx_size" != "null" ] && [ "$ctx_size" -gt 0 ]; then
+    ctx_size_k=$(( ctx_size / 1000 ))
+    parts+=("$(printf "ctx:${ctx_color}%d%%${RESET}/${DIM}%dk${RESET}" "$used_int" "$ctx_size_k")")
+  else
+    parts+=("$(printf "ctx:${ctx_color}%d%%${RESET}" "$used_int")")
+  fi
+fi
+
+# 3. Model (Third)
+if [ -n "$model" ] && [ "$model" != "null" ]; then
+  parts+=("$(printf "${MAGENTA}%s${RESET}" "$model")")
+fi
+
+# 4. 5h Window Limit & Reset (Fourth)
+if [ -n "$five_h" ] && [ "$five_h" != "null" ]; then
+  reset_5h_str=""
+  if [ -n "$five_h_reset" ]; then
+    r_time=$(format_reset "$five_h_reset")
+    [ -n "$r_time" ] && reset_5h_str=" (${r_time})"
+  fi
+  rate_5h=$(printf "5h:%.0f%%%s" "$five_h" "$reset_5h_str")
+  parts+=("$(printf "${YELLOW}%s${RESET}" "$rate_5h")")
+fi
+
+# 5. Weekly Limit & Reset (Fifth)
+if [ -n "$seven_d" ] && [ "$seven_d" != "null" ]; then
+  reset_1w_str=""
+  if [ -n "$seven_d_reset" ]; then
+    r_time=$(format_reset "$seven_d_reset")
+    [ -n "$r_time" ] && reset_1w_str=" (${r_time})"
+  fi
+  rate_1w=$(printf "1w:%.0f%%%s" "$seven_d" "$reset_1w_str")
+  parts+=("$(printf "${YELLOW}%s${RESET}" "$rate_1w")")
+fi
+
+# 6. Current Agent Git Branch (Sixth)
+# Only show branch for the CURRENT agent, ignoring any other agents in the same directory.
+agent_branch=""
+if [ -n "$payload_branch" ]; then
+  agent_branch="$payload_branch"
+fi
+
+# Check if caller matches a known pool session for this agent
+if [ -z "$agent_branch" ] && [ -n "$cwd" ]; then
+  detect_agent="$caller"
+  if [ -z "$detect_agent" ]; then
+    case "$model" in
+      *[cC]laude*|*[sS]onnet*|*[oO]pus*|*[hH]aiku*) detect_agent="claude" ;;
+      *[gG]emini*|*[aA]ntigravity*) detect_agent="agy" ;;
+    esac
+  fi
+  if [ -n "$detect_agent" ]; then
+    for sess_dir in "$HOME/.pool-session" "$HOME/.pool-solver-session"; do
+      sess_file="$sess_dir/$detect_agent"
+      if [ -f "$sess_file" ]; then
+        s_worktree=$(grep '^worktree=' "$sess_file" | head -1 | cut -d= -f2-)
+        if [ "$s_worktree" = "$cwd" ]; then
+          s_branch=$(grep '^branch=' "$sess_file" | head -1 | cut -d= -f2-)
+          [ -n "$s_branch" ] && agent_branch="${s_branch#feature/}"
+          break
+        fi
+      fi
+    done
+  fi
+fi
+
+# Check if directory itself is a dedicated git worktree
+if [ -z "$agent_branch" ] && [ -n "$cwd" ] && cd "$cwd" 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1; then
+  git_dir=$(git rev-parse --git-dir 2>/dev/null)
+  if [[ "$git_dir" == *"/worktrees/"* ]]; then
+    agent_branch=$(git branch --show-current 2>/dev/null)
+  fi
+fi
+
+if [ -n "$agent_branch" ]; then
+  parts+=("$(printf "${CYAN}⎇ %s${RESET}" "$agent_branch")")
+fi
+
+# 7. Secondary Status (Effort, Thinking, Sandbox)
+sec_parts=()
+if [ -n "$agent_state" ] && [ "$agent_state" != "idle" ]; then
+  sec_parts+=("$(printf "${YELLOW}%s${RESET}" "$agent_state")")
+fi
+if [ -n "$effort" ]; then
+  sec_parts+=("$(printf "${DIM}effort:%s${RESET}" "$effort")")
+elif [ "$thinking" = "true" ]; then
+  sec_parts+=("$(printf "${DIM}thinking:on${RESET}")")
+fi
+if [ "$sandbox" = "true" ]; then
+  sec_parts+=("$(printf "${GREEN}sandbox:on${RESET}")")
+fi
+
+if [ "${#sec_parts[@]}" -gt 0 ]; then
+  parts+=("${sec_parts[*]}")
+fi
+
+# --- Join with separator '|' ---
+sep="$(printf "${GRAY} | ${RESET}")"
+result=""
+for part in "${parts[@]}"; do
+  if [ -z "$result" ]; then
+    result="$part"
+  else
+    result="${result}${sep}${part}"
+  fi
+done
+
+printf "%b\n" "$result"
