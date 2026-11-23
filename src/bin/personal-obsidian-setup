@@ -98,6 +98,68 @@ with open(dst_p, 'w') as f:
 " 2>/dev/null || true
 fi
 
+# 4b. Ensure community plugins are enabled in Obsidian LocalStorage (disable Safe/Restricted mode)
+current_vault_id=$(python3 -c "
+import json, os
+try:
+    with open('$obsidian_json') as f:
+        data = json.load(f)
+    vdir = os.path.expanduser('$vault_dir')
+    for vid, info in data.get('vaults', {}).items():
+        if os.path.expanduser(info.get('path', '')) == vdir:
+            print(vid)
+            break
+except Exception:
+    pass
+" 2>/dev/null || true)
+
+if [ -n "$current_vault_id" ]; then
+    leveldb_dir="$obsidian_app_config/Local Storage/leveldb"
+    already_enabled=0
+    if [ -d "$leveldb_dir" ]; then
+        if strings "$leveldb_dir"/*.log "$leveldb_dir"/*.ldb 2>/dev/null | grep -q "enable-plugin-$current_vault_id"; then
+            already_enabled=1
+        fi
+    fi
+    obs_bin=$(command -v personal-obsidian 2>/dev/null || command -v obsidian 2>/dev/null || echo "")
+    if [ "$already_enabled" -eq 0 ] && [ -n "$obs_bin" ] && command -v node >/dev/null 2>&1; then
+        if systemctl --user is-active --quiet obsidian.service 2>/dev/null; then
+            systemctl --user stop obsidian.service 2>/dev/null || true
+        fi
+        rm -f "$obsidian_app_config/Singleton*"
+        "$obs_bin" "$vault_dir" --ozone-platform=headless --disable-gpu --no-sandbox --remote-debugging-port=9229 >/dev/null 2>&1 &
+        obs_boot_pid=$!
+        node -e '
+async function run() {
+  for (let i = 0; i < 30; i++) {
+    try {
+      const res = await fetch("http://127.0.0.1:9229/json");
+      const list = await res.json();
+      const page = list.find(t => t.type === "page");
+      if (page) {
+        const ws = new WebSocket(page.webSocketDebuggerUrl);
+        await new Promise(r => ws.onopen = r);
+        ws.send(JSON.stringify({
+          id: 1,
+          method: "Runtime.evaluate",
+          params: { expression: "app.plugins.setEnable(true)" }
+        }));
+        await new Promise(r => setTimeout(r, 600));
+        ws.close();
+        return;
+      }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+run();
+' 2>/dev/null || true
+        kill "$obs_boot_pid" 2>/dev/null || true
+        wait "$obs_boot_pid" 2>/dev/null || true
+        rm -f "$obsidian_app_config/Singleton*"
+    fi
+fi
+
 # 5. Disable native sync in core-plugins.json to avoid sync collisions
 if [ ! -f "$obsidian_dir/core-plugins.json" ]; then
     if [ -n "$src_obsidian" ] && [ -f "$src_obsidian/core-plugins.json" ]; then

@@ -46,7 +46,9 @@
     ".gradle",
     ".git",
     ".dart_tool",
-    "__pycache__"
+    "__pycache__",
+    "backups",
+    "home-assistant"
   ],
   "onlyAllowPaths": [],
   "enableStatusBarInfo": true,
