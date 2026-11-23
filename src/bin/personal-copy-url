@@ -45,8 +45,10 @@ fi
 # 5. OSC 52 sequence (copies to host terminal clipboard, works over SSH/tmux into Kitty)
 b64=$(printf '%s' "$clean_url" | base64 | tr -d '\r\n')
 target_out=""
-if [ -c /dev/tty ] && [ -w /dev/tty ]; then
+if tty -s 2>/dev/null; then
     target_out="/dev/tty"
+elif [ -t 1 ]; then
+    target_out="/dev/stdout"
 fi
 if [ -n "$target_out" ]; then
     if [ -n "${TMUX:-}" ]; then
