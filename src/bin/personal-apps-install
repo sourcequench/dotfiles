@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install signal-desktop and helium on machines where apt repos cannot be added.
+# Install signal-desktop, helium, and obsidian on machines where apt repos cannot be added.
 # If the packages are already managed by apt, this script skips them.
 # Stores the installed package version in ~/.local/state/personal-apps/.
 set -eu
@@ -67,6 +67,25 @@ configure_helium() {
     [ -f "$desktop_src" ] && cp "$desktop_src" "$HOME/.local/share/applications/helium.desktop"
 }
 
+configure_obsidian() {
+    if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
+        ln -sf "$HOME/bin/opt/Obsidian/obsidian" "$HOME/.local/bin/obsidian"
+    elif [ -x /usr/bin/obsidian ]; then
+        ln -sf /usr/bin/obsidian "$HOME/.local/bin/obsidian"
+    fi
+    for f in "$HOME/bin/usr/share/applications/obsidian.desktop" \
+             /usr/share/applications/obsidian.desktop; do
+        if [ -f "$f" ]; then
+            cp "$f" "$HOME/.local/share/applications/obsidian.desktop"
+            if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
+                sed -i 's|^Exec=/opt/Obsidian/obsidian|Exec='"$HOME"'/bin/opt/Obsidian/obsidian|' \
+                    "$HOME/.local/share/applications/obsidian.desktop"
+            fi
+            break
+        fi
+    done
+}
+
 install_signal() {
     # Only skip if our apt repo is configured — dpkg status alone is unreliable
     # (old installs can leave ii entries even when the repo is gone)
@@ -124,5 +143,31 @@ install_helium() {
     echo 'Helium installed.'
 }
 
+install_obsidian() {
+    # Skip download if already installed by apt / system package
+    if [ -x /usr/bin/obsidian ] && dpkg -s obsidian >/dev/null 2>&1; then
+        configure_obsidian
+        return 0
+    fi
+    tag=$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/obsidianmd/obsidian-releases/releases/latest 2>/dev/null | sed 's|.*/tag/v||')
+    [ -n "$tag" ] || \
+        { echo 'personal-apps-install: cannot determine Obsidian version' >&2; return 1; }
+    latest_version="$tag"
+    latest_url="https://github.com/obsidianmd/obsidian-releases/releases/download/v${tag}/obsidian_${tag}_amd64.deb"
+    version_file="$state_dir/obsidian-version"
+    if package_is_current "$HOME/bin/opt/Obsidian/obsidian" "$version_file" \
+            "$state_dir/obsidian-url" "$latest_version" "$latest_url"; then
+        configure_obsidian
+        return 0
+    fi
+    printf 'Installing Obsidian %s from %s\n' "$latest_version" "$latest_url"
+    curl -fsSL -o "$work_dir/obsidian.deb" "$latest_url"
+    dpkg-deb -x "$work_dir/obsidian.deb" "$HOME/bin"
+    configure_obsidian
+    printf '%s\n' "$latest_version" > "$version_file"
+    echo 'Obsidian installed.'
+}
+
 install_signal
 install_helium
+install_obsidian

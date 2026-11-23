@@ -1,0 +1,60 @@
+#!/bin/sh
+# Copy a URL cleanly to user clipboard, primary selection, tmux buffer, ~/.last-url,
+# and emit OSC 52 + OSC 8 hyperlink so the link never breaks across lines.
+set -eu
+
+url="${1:-}"
+if [ -z "$url" ]; then
+    if [ ! -t 0 ]; then
+        url=$(cat)
+    else
+        echo "Usage: personal-copy-url <url>" >&2
+        exit 1
+    fi
+fi
+
+# Strip all newlines and surrounding whitespace
+clean_url=$(printf '%s' "$url" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+if [ -z "$clean_url" ]; then
+    echo "personal-copy-url: empty URL" >&2
+    exit 1
+fi
+
+# 1. Write single-line file ~/.last-url and /tmp/last-url
+printf '%s\n' "$clean_url" > "$HOME/.last-url"
+printf '%s\n' "$clean_url" > "/tmp/last-url" 2>/dev/null || true
+
+# 2. Put in tmux paste buffer if in tmux
+if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+    tmux set-buffer "$clean_url" 2>/dev/null || true
+fi
+
+# 3. Wayland clipboard + primary selection
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$clean_url" | wl-copy 2>/dev/null || true
+    printf '%s' "$clean_url" | wl-copy --primary 2>/dev/null || true
+fi
+
+# 4. X11 clipboard + primary selection
+if [ -n "${DISPLAY:-}" ] && command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$clean_url" | xclip -selection clipboard 2>/dev/null || true
+    printf '%s' "$clean_url" | xclip -selection primary 2>/dev/null || true
+fi
+
+# 5. OSC 52 sequence (copies to host terminal clipboard, works over SSH/tmux into Kitty)
+b64=$(printf '%s' "$clean_url" | base64 | tr -d '\r\n')
+target_out="/dev/tty"
+if [ ! -w /dev/tty ]; then
+    target_out="/dev/stdout"
+fi
+if [ -n "${TMUX:-}" ]; then
+    printf '\033Ptmux;\033\033]52;c;%s\007\033\\' "$b64" > "$target_out" 2>/dev/null || true
+else
+    printf '\033]52;c;%s\007' "$b64" > "$target_out" 2>/dev/null || true
+fi
+
+# 6. User feedback: OSC 8 terminal hyperlink + clean URL
+printf 'Copied to clipboard and ~/.last-url\n'
+printf '\033]8;;%s\007👉 [Click to open link]\033]8;;\007\n' "$clean_url"
+printf 'URL: %s\n' "$clean_url"

@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStartPre=/bin/sh -c 'rm -f %h/.config/obsidian/Singleton*'
-ExecStart=/usr/bin/obsidian %h/md --ozone-platform=headless --disable-gpu --no-sandbox
+ExecStart=%h/.local/bin/personal-obsidian %h/md --ozone-platform=headless --disable-gpu --no-sandbox
 Restart=always
 RestartSec=30
 
