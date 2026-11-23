@@ -151,7 +151,8 @@ install -m 0644 "$source_dir/wm/sway.conf" "$cfg/sway.conf"
 printf 'include ~/.config/personal-dotfiles/sway.conf\n' > "$HOME/.config/sway/config"
 "$HOME/.local/bin/personal-apps-install" || true
 "$HOME/.local/bin/personal-obsidian-setup" || true
-systemctl --user enable obsidian.service 2>/dev/null || true
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable --now obsidian.service 2>/dev/null || true
 systemctl --user disable --now mako.service 2>/dev/null || pkill mako 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 if [ "$cron_updates" -eq 1 ]; then

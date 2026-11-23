@@ -1,6 +1,15 @@
 #!/bin/sh
 set -eu
 
+# Ensure standard user paths are in PATH even when run from cron
+export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+
+# Ensure user systemd and dbus access when run from cron
+if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+fi
+
 repo=${PERSONAL_DOTFILES_REPO:-"$HOME/.local/share/personal-dotfiles"}
 
 if [ ! -d "$repo/.git" ]; then
