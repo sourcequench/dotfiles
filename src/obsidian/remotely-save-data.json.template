@@ -48,7 +48,8 @@
     ".dart_tool",
     "__pycache__",
     "backups",
-    "home-assistant"
+    "home-assistant/config",
+    "home-assistant/matter"
   ],
   "onlyAllowPaths": [],
   "enableStatusBarInfo": true,

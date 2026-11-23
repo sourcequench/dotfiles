@@ -17,6 +17,8 @@
     "/(^|\\/)\\.dart_tool(\\/?|$)/",
     "/(^|\\/)__pycache__(\\/?|$)/",
     "/(^|\\/)\\.(pytest_cache|mypy_cache|next|turbo)(\\/?|$)/",
+    "/(^|\\/)home-assistant\\/(config|matter.*)(\\/?|$)/",
+    "/(^|\\/)home\\/backups(\\/?|$)/",
     "/\\.(mp4|mkv|webm|avi|mov|aab|apk|so(\\.[0-9]+)*|whl|tar|gz|zip)$/"
   ],
   "pdfExportSettings": {
