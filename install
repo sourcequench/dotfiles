@@ -69,15 +69,27 @@ fi
 [ -z "$unavailable" ] || printf 'Unavailable package names:%s\n' "$unavailable"
 [ -z "$commands_missing" ] || printf 'Missing commands:%s\n' "$commands_missing"
 if [ "$action" = check ]; then [ -z "$missing$unavailable$commands_missing" ]; exit $?; fi
-[ -z "$unavailable" ] || { echo 'Unavailable package names prevent installation.' >&2; exit 1; }
-if [ -n "$missing" ]; then
-    [ "$do_packages" -eq 1 ] || { echo 'Use --install-packages to install missing packages.' >&2; exit 1; }
-    if [ "$dry_run" -eq 1 ]; then printf 'Would install:%s\n' "$missing"; exit 0; fi
-    sudo apt-get update
-    # Intentional word splitting into apt package arguments.
-    sudo apt-get install -y -- $missing
+if [ "$cron_updates" -eq 1 ]; then
+    if [ -n "$unavailable" ]; then
+        echo "Notice: Unavailable packages:$unavailable" >&2
+    fi
+    if [ -n "$missing" ]; then
+        echo "Notice: Missing packages (run with --install-packages to install):$missing" >&2
+    fi
+    if ! "$source_dir/bin/personal-deps" >/dev/null 2>&1; then
+        echo "Notice: Some desktop commands are missing; continuing user dotfiles installation." >&2
+    fi
+else
+    [ -z "$unavailable" ] || { echo 'Unavailable package names prevent installation.' >&2; exit 1; }
+    if [ -n "$missing" ]; then
+        [ "$do_packages" -eq 1 ] || { echo 'Use --install-packages to install missing packages.' >&2; exit 1; }
+        if [ "$dry_run" -eq 1 ]; then printf 'Would install:%s\n' "$missing"; exit 0; fi
+        sudo apt-get update
+        # Intentional word splitting into apt package arguments.
+        sudo apt-get install -y -- $missing
+    fi
+    "$source_dir/bin/personal-deps" || { echo 'Missing required commands; configuration unchanged.' >&2; exit 1; }
 fi
-"$source_dir/bin/personal-deps" || { echo 'Missing required commands; configuration unchanged.' >&2; exit 1; }
 [ "$dry_run" -eq 0 ] || { echo 'Dry run complete.'; exit 0; }
 cfg="$HOME/.config/personal-dotfiles"; state_dir="$HOME/.local/state/personal-dotfiles"; backup="$state_dir/backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$cfg" "$state_dir" "$HOME/.local/bin" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" "$HOME/.config/kitty" "$HOME/.config/tmux" "$HOME/.config/i3" "$HOME/.config/sway" "$HOME/.config/dunst" "$HOME/.config/waybar" "$HOME/.config/swayosd" "$HOME/.config/xdg-desktop-portal" "$HOME/.config/systemd/user"
@@ -121,6 +133,7 @@ install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/person
 install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-signal"
 install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
 install -m 0755 "$source_dir/bin/personal-obsidian" "$HOME/.local/bin/personal-obsidian"
+[ -e "$HOME/.local/bin/obsidian" ] || ln -sf "$HOME/.local/bin/personal-obsidian" "$HOME/.local/bin/obsidian"
 install -m 0755 "$source_dir/bin/personal-copy-url" "$HOME/.local/bin/personal-copy-url"
 ln -sf "$HOME/.local/bin/personal-copy-url" "$HOME/.local/bin/copy-url"
 install -m 0755 "$source_dir/bin/personal-obsidian-setup" "$HOME/.local/bin/personal-obsidian-setup"

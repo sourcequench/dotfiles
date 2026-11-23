@@ -10,6 +10,13 @@ if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 fi
 
+force=0
+for arg in "$@"; do
+    if [ "$arg" = "--force" ] || [ "$arg" = "-f" ]; then
+        force=1
+    fi
+done
+
 repo=${PERSONAL_DOTFILES_REPO:-"$HOME/.local/share/personal-dotfiles"}
 
 if [ ! -d "$repo/.git" ]; then
@@ -21,7 +28,7 @@ git -C "$repo" pull --ff-only
 commit=$(git -C "$repo" rev-parse HEAD)
 state_dir=${XDG_STATE_HOME:-"$HOME/.local/state"}/personal-dotfiles
 state_file=$state_dir/auto-updated
-if [ -r "$state_file" ] && [ "$(cat "$state_file")" = "$commit" ]; then
+if [ "$force" -eq 0 ] && [ -r "$state_file" ] && [ "$(cat "$state_file")" = "$commit" ]; then
     echo "Dotfiles are already applied at $commit"
     exit 0
 fi

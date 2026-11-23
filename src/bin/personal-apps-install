@@ -149,9 +149,13 @@ install_obsidian() {
         configure_obsidian
         return 0
     fi
-    tag=$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/obsidianmd/obsidian-releases/releases/latest 2>/dev/null | sed 's|.*/tag/v||')
-    [ -n "$tag" ] || \
-        { echo 'personal-apps-install: cannot determine Obsidian version' >&2; return 1; }
+    tag=$(curl -fsSLI -A "Mozilla/5.0 (X11; Linux x86_64)" -o /dev/null -w "%{url_effective}" https://github.com/obsidianmd/obsidian-releases/releases/latest 2>/dev/null | sed 's|.*/tag/v||')
+    if [ -z "$tag" ]; then
+        tag=$(curl -fsSL -A "Mozilla/5.0 (X11; Linux x86_64)" https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest 2>/dev/null | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+    fi
+    if [ -z "$tag" ]; then
+        tag="1.15.1"
+    fi
     latest_version="$tag"
     latest_url="https://github.com/obsidianmd/obsidian-releases/releases/download/v${tag}/obsidian_${tag}_amd64.deb"
     version_file="$state_dir/obsidian-version"
@@ -161,13 +165,18 @@ install_obsidian() {
         return 0
     fi
     printf 'Installing Obsidian %s from %s\n' "$latest_version" "$latest_url"
-    curl -fsSL -o "$work_dir/obsidian.deb" "$latest_url"
-    dpkg-deb -x "$work_dir/obsidian.deb" "$HOME/bin"
-    configure_obsidian
-    printf '%s\n' "$latest_version" > "$version_file"
-    echo 'Obsidian installed.'
+    if curl -fsSL -A "Mozilla/5.0 (X11; Linux x86_64)" -o "$work_dir/obsidian.deb" "$latest_url"; then
+        dpkg-deb -x "$work_dir/obsidian.deb" "$HOME/bin"
+        chmod +x "$HOME/bin/opt/Obsidian/obsidian" 2>/dev/null || true
+        configure_obsidian
+        printf '%s\n' "$latest_version" > "$version_file"
+        echo 'Obsidian installed.'
+    else
+        echo 'personal-apps-install: cannot download Obsidian deb' >&2
+        return 1
+    fi
 }
 
-install_signal
-install_helium
-install_obsidian
+install_signal || echo 'personal-apps-install: Signal installation failed' >&2
+install_helium || echo 'personal-apps-install: Helium installation failed' >&2
+install_obsidian || echo 'personal-apps-install: Obsidian installation failed' >&2

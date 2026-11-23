@@ -2,14 +2,14 @@
 if [ -x /usr/bin/obsidian ]; then
     exec /usr/bin/obsidian "$@"
 fi
-if command -v obsidian >/dev/null 2>&1; then
-    exec obsidian "$@"
-fi
 if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
     exec "$HOME/bin/opt/Obsidian/obsidian" "$@"
 fi
-if [ -x "$HOME/.local/bin/obsidian" ]; then
-    exec "$HOME/.local/bin/obsidian" "$@"
+if command -v obsidian >/dev/null 2>&1; then
+    target=$(command -v obsidian)
+    if [ "$target" != "$0" ] && [ "$target" != "$HOME/.local/bin/personal-obsidian" ] && [ "$target" != "$HOME/.local/bin/obsidian" ]; then
+        exec "$target" "$@"
+    fi
 fi
 echo 'personal-obsidian: obsidian not found' >&2
 exit 1
