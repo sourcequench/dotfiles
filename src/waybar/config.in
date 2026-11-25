@@ -10,7 +10,7 @@
     },
 
     "clock": {
-        "format": "<span color=\"@cyan@\">{:%Y-%m-%d}</span> <span color=\"@yellow@\">{:%H}</span><span color=\"@fg_muted@\">:</span><span color=\"@green@\">{:%M}</span><span color=\"@fg_muted@\">:</span><span color=\"@magenta@\">{:%S}</span>",
+        "format": "<span color=\"@cyan@\">{0:%Y-%m-%d}</span> <span color=\"@yellow@\">{0:%H}</span><span color=\"@fg_muted@\">:</span><span color=\"@green@\">{0:%M}</span><span color=\"@fg_muted@\">:</span><span color=\"@magenta@\">{0:%S}</span>",
         "interval": 1
     },
 
