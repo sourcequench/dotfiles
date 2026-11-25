@@ -27,6 +27,7 @@ DEFAULT = "default"
 
 # template file -> rendered destination
 OUTPUTS = {
+    "waybar-config": os.path.join(HOME, ".config", "waybar", "config"),
     "waybar-style.css": os.path.join(HOME, ".config", "waybar", "style.css"),
     "dunstrc": os.path.join(HOME, ".config", "dunst", "dunstrc"),
     "colors.conf": os.path.join(CFG, "colors.conf"),

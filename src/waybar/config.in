@@ -10,7 +10,7 @@
     },
 
     "clock": {
-        "format": "{:%Y-%m-%d %H:%M:%S}",
+        "format": "<span color=\"@cyan@\">{:%Y-%m-%d}</span> <span color=\"@yellow@\">{:%H}</span><span color=\"@fg_muted@\">:</span><span color=\"@green@\">{:%M}</span><span color=\"@fg_muted@\">:</span><span color=\"@magenta@\">{:%S}</span>",
         "interval": 1
     },
 
