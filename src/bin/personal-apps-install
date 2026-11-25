@@ -68,11 +68,7 @@ configure_helium() {
 }
 
 configure_obsidian() {
-    if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
-        ln -sf "$HOME/bin/opt/Obsidian/obsidian" "$HOME/.local/bin/obsidian"
-    elif [ -x /usr/bin/obsidian ]; then
-        ln -sf /usr/bin/obsidian "$HOME/.local/bin/obsidian"
-    fi
+    ln -sf "$HOME/.local/bin/personal-obsidian" "$HOME/.local/bin/obsidian"
     for f in "$HOME/bin/usr/share/applications/obsidian.desktop" \
              /usr/share/applications/obsidian.desktop; do
         if [ -f "$f" ]; then

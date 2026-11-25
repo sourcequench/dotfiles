@@ -133,7 +133,7 @@ install -m 0755 "$source_dir/bin/personal-apps-install" "$HOME/.local/bin/person
 install -m 0755 "$source_dir/bin/personal-signal" "$HOME/.local/bin/personal-signal"
 install -m 0755 "$source_dir/bin/personal-helium" "$HOME/.local/bin/personal-helium"
 install -m 0755 "$source_dir/bin/personal-obsidian" "$HOME/.local/bin/personal-obsidian"
-[ -e "$HOME/.local/bin/obsidian" ] || ln -sf "$HOME/.local/bin/personal-obsidian" "$HOME/.local/bin/obsidian"
+ln -sf "$HOME/.local/bin/personal-obsidian" "$HOME/.local/bin/obsidian"
 install -m 0755 "$source_dir/bin/personal-copy-url" "$HOME/.local/bin/personal-copy-url"
 ln -sf "$HOME/.local/bin/personal-copy-url" "$HOME/.local/bin/copy-url"
 install -m 0755 "$source_dir/bin/personal-obsidian-setup" "$HOME/.local/bin/personal-obsidian-setup"
