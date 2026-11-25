@@ -1,15 +1,62 @@
 #!/bin/sh
-if [ -x /usr/bin/obsidian ]; then
-    exec /usr/bin/obsidian "$@"
-fi
-if [ -x "$HOME/bin/opt/Obsidian/obsidian" ]; then
-    exec "$HOME/bin/opt/Obsidian/obsidian" "$@"
-fi
-if command -v obsidian >/dev/null 2>&1; then
-    target=$(command -v obsidian)
-    if [ "$target" != "$0" ] && [ "$target" != "$HOME/.local/bin/personal-obsidian" ] && [ "$target" != "$HOME/.local/bin/obsidian" ]; then
-        exec "$target" "$@"
+set -e
+
+# Find the real Obsidian binary (check standard paths, avoiding wrapper symlinks)
+target=""
+for cand in /opt/Obsidian/obsidian /usr/bin/obsidian "$HOME/bin/opt/Obsidian/obsidian"; do
+    if [ -x "$cand" ]; then
+        real=$(readlink -f "$cand" 2>/dev/null || echo "$cand")
+        if [ "$real" != "$0" ] && [ "$real" != "$HOME/.local/bin/personal-obsidian" ] && [ "$real" != "$HOME/.local/bin/obsidian" ]; then
+            target="$cand"
+            break
+        fi
+    fi
+done
+
+if [ -z "$target" ] && command -v obsidian >/dev/null 2>&1; then
+    cand=$(command -v obsidian)
+    real=$(readlink -f "$cand" 2>/dev/null || echo "$cand")
+    if [ "$real" != "$0" ] && [ "$real" != "$HOME/.local/bin/personal-obsidian" ] && [ "$real" != "$HOME/.local/bin/obsidian" ]; then
+        target="$cand"
     fi
 fi
-echo 'personal-obsidian: obsidian not found' >&2
-exit 1
+
+if [ -z "$target" ]; then
+    echo "personal-obsidian: obsidian executable not found" >&2
+    exit 1
+fi
+
+# Detect whether we are invoked in headless mode (e.g. by obsidian.service)
+is_headless=0
+for arg in "$@"; do
+    case "$arg" in
+        *headless*) is_headless=1; break ;;
+    esac
+done
+
+if [ "$is_headless" -eq 1 ]; then
+    exec "$target" "$@"
+fi
+
+# GUI invocation: if obsidian.service is running in headless mode, stop it so the UI can open
+was_service_running=0
+if systemctl --user is-active --quiet obsidian.service 2>/dev/null; then
+    was_service_running=1
+    systemctl --user stop obsidian.service 2>/dev/null || true
+    pkill -u "$(id -u)" -f "[o]zone-platform=headless" 2>/dev/null || true
+    rm -f "$HOME/.config/obsidian/Singleton*"
+fi
+
+cleanup() {
+    if [ "$was_service_running" -eq 1 ]; then
+        systemctl --user start obsidian.service >/dev/null 2>&1 &
+    fi
+}
+trap cleanup EXIT INT TERM
+
+# If no arguments provided, default to opening the main vault ~/md
+if [ $# -eq 0 ] && [ -d "$HOME/md" ]; then
+    "$target" "$HOME/md"
+else
+    "$target" "$@"
+fi
