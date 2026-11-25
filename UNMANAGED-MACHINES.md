@@ -28,7 +28,7 @@ The dotfiles installer aligns the following configuration:
 - Vault ignore filters in `~/md/.obsidian/app.json` to prevent indexing overhead.
 - Remotely Save community plugin with WebDAV sync (`https://dav.sourcequench.org`).
 - Disabling native Obsidian Sync to prevent sync conflicts.
-- Actuating the headless service (`obsidian.service`) whenever configuration changes.
+- Actuating the headless service (`obsidian.service`) on headless hosts (e.g. `server`). On interactive desktops/laptops, the GUI runs as the main instance with CLI integration.
 
 Obsidian WebDAV sync credentials can be supplied in any of the following ways:
 1. Log in and unlock Bitwarden CLI (`bw unlock`), which provides the token from item `Obsidian WebDAV Sync`.

@@ -267,14 +267,16 @@ for arg in "${@:-}"; do
     fi
 done
 
-if ! systemctl --user is-active --quiet obsidian.service 2>/dev/null; then
-    if systemctl --user is-enabled --quiet obsidian.service 2>/dev/null; then
-        echo "personal-obsidian-setup: starting obsidian.service"
+if [ "$(hostname)" = "server" ]; then
+    if ! systemctl --user is-active --quiet obsidian.service 2>/dev/null; then
+        if systemctl --user is-enabled --quiet obsidian.service 2>/dev/null; then
+            echo "personal-obsidian-setup: starting obsidian.service"
+            systemctl --user daemon-reload 2>/dev/null || true
+            systemctl --user start obsidian.service 2>/dev/null || true
+        fi
+    elif [ "$changed" -eq 1 ] || [ "$force_restart" -eq 1 ]; then
+        echo "personal-obsidian-setup: restarting obsidian.service to actuate updated configuration"
         systemctl --user daemon-reload 2>/dev/null || true
-        systemctl --user start obsidian.service 2>/dev/null || true
+        systemctl --user restart obsidian.service 2>/dev/null || true
     fi
-elif [ "$changed" -eq 1 ] || [ "$force_restart" -eq 1 ]; then
-    echo "personal-obsidian-setup: restarting obsidian.service to actuate updated configuration"
-    systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart obsidian.service 2>/dev/null || true
 fi

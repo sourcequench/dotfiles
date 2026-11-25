@@ -1,6 +1,22 @@
 #!/bin/sh
 set -e
 
+# Ensure runtime dir and display variables are populated for CLI/IPC calls
+if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+fi
+if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    for sock in "$XDG_RUNTIME_DIR"/wayland-*; do
+        if [ -S "$sock" ]; then
+            export WAYLAND_DISPLAY="$(basename "$sock")"
+            break
+        fi
+    done
+fi
+if [ -z "${DISPLAY:-}" ]; then
+    export DISPLAY=":0"
+fi
+
 # Find the real Obsidian binary (check standard paths, avoiding wrapper symlinks)
 target=""
 for cand in /opt/Obsidian/obsidian /usr/bin/obsidian "$HOME/bin/opt/Obsidian/obsidian"; do
